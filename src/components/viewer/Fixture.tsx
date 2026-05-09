@@ -1,14 +1,32 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useRef, useState } from "react";
 import * as THREE from "three";
+import { type ThreeEvent, useThree } from "@react-three/fiber";
 import { type Fixture as FixtureData, type FixtureType } from "@/lib/schemas";
 import { treadCount } from "@/lib/stairs";
-import { SceneHoverChrome } from "./SceneObjectHover";
+import { SceneHoverChrome, type HoverInfo } from "./SceneObjectHover";
 
 interface FixtureProps {
   fixture: FixtureData;
+  /** Called while the user drags the fixture. Position is in world (scaled)
+   * coords; y is held at the original value so fixtures slide along the floor
+   * instead of lifting off it. */
+  onMove?: (id: string, position: [number, number, number]) => void;
+  /** Called while the user rotates the fixture. Angle is in radians around
+   * the world Y axis. */
+  onRotate?: (id: string, rotationY: number) => void;
+  onDragStart?: () => void;
+  onDragEnd?: () => void;
+  onHoverChange?: (info: HoverInfo | null) => void;
 }
+
+// Pixels of horizontal cursor travel per radian of rotation. ~0.013 rad/px
+// puts a full revolution at ~480px of drag — fast enough to feel responsive,
+// slow enough to land on common angles.
+const ROTATE_RAD_PER_PX = 0.013;
+
+const FLOOR_PLANE = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 
 function humanFixtureType(type: FixtureType): string {
   const labels: Record<FixtureType, string> = {
@@ -43,16 +61,96 @@ const COLORS: Record<FixtureType, string> = {
   other: "#6a727c",
 };
 
-export function Fixture({ fixture }: FixtureProps) {
+export function Fixture({
+  fixture,
+  onMove,
+  onRotate,
+  onDragStart,
+  onDragEnd,
+  onHoverChange,
+}: FixtureProps) {
   const [w, h, d] = fixture.size;
   const [px, py, pz] = fixture.position;
   const color = COLORS[fixture.type];
   const kind = humanFixtureType(fixture.type);
   const customLabel = fixture.label?.trim();
+  const interactive =
+    typeof onMove === "function" || typeof onRotate === "function";
   const title = customLabel || kind;
   const subtitle = customLabel
     ? `${kind} · placed from your photo (layout estimate)`
     : `${kind} · inferred from your photo`;
+
+  const camera = useThree((s) => s.camera);
+  const gl = useThree((s) => s.gl);
+  const raycaster = useThree((s) => s.raycaster);
+  const [dragging, setDragging] = useState(false);
+  // Latest props go through a ref so the window-level drag listeners can read
+  // them without rebinding on every fixture position update.
+  const stateRef = useRef({ fixture, py, onMove, onRotate, onDragEnd });
+  stateRef.current = { fixture, py, onMove, onRotate, onDragEnd };
+
+  const projectPointerToFloor = (
+    clientX: number,
+    clientY: number,
+    out: THREE.Vector3,
+  ): boolean => {
+    const rect = gl.domElement.getBoundingClientRect();
+    const ndcX = ((clientX - rect.left) / rect.width) * 2 - 1;
+    const ndcY = -((clientY - rect.top) / rect.height) * 2 + 1;
+    raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), camera);
+    return raycaster.ray.intersectPlane(FLOOR_PLANE, out) !== null;
+  };
+
+  const handlePointerDown = (e: ThreeEvent<PointerEvent>) => {
+    if (!interactive) return;
+    // Shift held → rotate-in-place mode; otherwise translate along the floor.
+    const rotateMode = e.shiftKey && typeof onRotate === "function";
+    if (!rotateMode && typeof onMove !== "function") return;
+    e.stopPropagation();
+
+    let handleMove: (ev: PointerEvent) => void;
+
+    if (rotateMode) {
+      const startAngle = fixture.rotationY ?? 0;
+      const startClientX = e.clientX;
+      handleMove = (ev: PointerEvent) => {
+        const delta = (ev.clientX - startClientX) * ROTATE_RAD_PER_PX;
+        const s = stateRef.current;
+        s.onRotate?.(s.fixture.id, startAngle + delta);
+      };
+      gl.domElement.style.cursor = "ew-resize";
+    } else {
+      const hit = new THREE.Vector3();
+      if (!projectPointerToFloor(e.clientX, e.clientY, hit)) return;
+      // Capture offset between the fixture origin and the cursor on the floor
+      // plane so the fixture doesn't snap its center to the cursor on grab.
+      const offsetX = px - hit.x;
+      const offsetZ = pz - hit.z;
+      handleMove = (ev: PointerEvent) => {
+        const next = new THREE.Vector3();
+        if (!projectPointerToFloor(ev.clientX, ev.clientY, next)) return;
+        const s = stateRef.current;
+        s.onMove?.(s.fixture.id, [next.x + offsetX, s.py, next.z + offsetZ]);
+      };
+      gl.domElement.style.cursor = "grabbing";
+    }
+
+    setDragging(true);
+    onDragStart?.();
+
+    const handleUp = () => {
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleUp);
+      window.removeEventListener("pointercancel", handleUp);
+      gl.domElement.style.cursor = "";
+      setDragging(false);
+      stateRef.current.onDragEnd?.();
+    };
+    window.addEventListener("pointermove", handleMove);
+    window.addEventListener("pointerup", handleUp);
+    window.addEventListener("pointercancel", handleUp);
+  };
 
   // The geometry switch puts each shape's bottom at local y = 0 (so fixtures
   // sit cleanly on the floor). Gemini supplies position as the *center* of the
@@ -63,14 +161,15 @@ export function Fixture({ fixture }: FixtureProps) {
     <group
       position={[px, py - h / 2, pz]}
       rotation={[0, fixture.rotationY ?? 0, 0]}
+      onPointerDown={interactive ? handlePointerDown : undefined}
     >
       <SceneHoverChrome
         title={title}
         subtitle={subtitle}
         accentColor={color}
         pinLocalY={h}
-        htmlLift={0.2}
-        distanceFactor={11}
+        disabled={dragging}
+        onHoverChange={onHoverChange}
       >
         <FixtureGeometry type={fixture.type} size={[w, h, d]} color={color} />
       </SceneHoverChrome>

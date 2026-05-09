@@ -170,7 +170,9 @@ export function SceneView() {
             Procedural scene
           </h1>
           <p className="text-xs text-muted-foreground">
-            Stylized low-poly approximation. Drag to orbit · scroll to zoom.
+            Stylized low-poly approximation. Drag empty space to orbit · scroll
+            to zoom · drag fixtures to slide them along the floor · hold Shift
+            and drag to rotate.
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
