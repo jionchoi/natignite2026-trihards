@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import * as THREE from "three";
 import { type RoomLayout } from "@/lib/schemas";
 import { Fixture } from "./Fixture";
-import { SceneHoverChrome } from "./SceneObjectHover";
+import { SceneHoverChrome, type HoverInfo } from "./SceneObjectHover";
 
 const WALL_ACCENT = "#7d8b96";
 const FLOOR_ACCENT = "#5d6e78";
@@ -13,9 +13,21 @@ const FLOOR_MARGIN = 0.4;
 
 interface RoomSceneProps {
   layout: RoomLayout;
+  onFixtureMove?: (id: string, position: [number, number, number]) => void;
+  onFixtureRotate?: (id: string, rotationY: number) => void;
+  onFixtureDragStart?: () => void;
+  onFixtureDragEnd?: () => void;
+  onHoverChange?: (info: HoverInfo | null) => void;
 }
 
-export function RoomScene({ layout }: RoomSceneProps) {
+export function RoomScene({
+  layout,
+  onFixtureMove,
+  onFixtureRotate,
+  onFixtureDragStart,
+  onFixtureDragEnd,
+  onHoverChange,
+}: RoomSceneProps) {
   const floorBox = useMemo(() => {
     // Gemini's floor polygon and wall coordinates often don't share an origin,
     // which leaves a polygon-shaped floor offset from the walls. Derive the
@@ -70,8 +82,7 @@ export function RoomScene({ layout }: RoomSceneProps) {
         subtitle="Walkable area estimated from your photo (layout is approximate)"
         accentColor={FLOOR_ACCENT}
         pinLocalY={0.04}
-        htmlLift={0.16}
-        distanceFactor={15}
+        onHoverChange={onHoverChange}
       >
         {/* Slab centered on the building footprint. Top face sits at y=0
             (where walls and fixtures already start) so the building visibly
@@ -94,11 +105,19 @@ export function RoomScene({ layout }: RoomSceneProps) {
       />
 
       {layout.walls.map((wall, idx) => (
-        <Wall key={idx} wall={wall} />
+        <Wall key={idx} wall={wall} onHoverChange={onHoverChange} />
       ))}
 
       {layout.fixtures.map((fixture) => (
-        <Fixture key={fixture.id} fixture={fixture} />
+        <Fixture
+          key={fixture.id}
+          fixture={fixture}
+          onMove={onFixtureMove}
+          onRotate={onFixtureRotate}
+          onDragStart={onFixtureDragStart}
+          onDragEnd={onFixtureDragEnd}
+          onHoverChange={onHoverChange}
+        />
       ))}
     </group>
   );
@@ -106,8 +125,10 @@ export function RoomScene({ layout }: RoomSceneProps) {
 
 function Wall({
   wall,
+  onHoverChange,
 }: {
   wall: { start: [number, number]; end: [number, number]; height: number };
+  onHoverChange?: (info: HoverInfo | null) => void;
 }) {
   const [x1, z1] = wall.start;
   const [x2, z2] = wall.end;
@@ -128,8 +149,7 @@ function Wall({
         subtitle="Room boundary estimated from your photo"
         accentColor={WALL_ACCENT}
         pinLocalY={wall.height / 2 + 0.03}
-        htmlLift={0.18}
-        distanceFactor={12}
+        onHoverChange={onHoverChange}
       >
         <mesh castShadow receiveShadow>
           <boxGeometry args={[length, wall.height, thickness]} />
