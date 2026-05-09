@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useRef } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
@@ -10,6 +10,7 @@ import { SCENE_ROOM_SCALE } from "@/lib/sceneScale";
 import type { SceneSuggestionItem } from "@/lib/sceneSuggestions";
 import { RoomScene } from "./RoomScene";
 import { OnlinePlacements } from "./OnlinePlacements";
+import { type HoverInfo } from "./SceneObjectHover";
 import {
   AgentSimulation,
   type Blocker,
@@ -45,6 +46,20 @@ export function SceneViewer({
   className,
 }: SceneViewerProps) {
   const controlsRef = useRef<any>(null);
+  // Live overrides from drag-to-move and shift-drag-to-rotate. Keyed by
+  // fixture id; positions are stored in scaled (world) coords so they can be
+  // spliced straight into scaledLayout without re-scaling.
+  const [fixtureOverrides, setFixtureOverrides] = useState<
+    Record<
+      string,
+      { position?: [number, number, number]; rotationY?: number }
+    >
+  >({});
+
+  // Reset overrides when a different layout is loaded (e.g. new analysis).
+  useEffect(() => {
+    setFixtureOverrides({});
+  }, [layout]);
 
   const scaledLayout = useMemo<RoomLayout>(
     () => ({
@@ -65,17 +80,53 @@ export function SceneViewer({
         ] as [number, number],
         height: w.height,
       })),
-      fixtures: layout.fixtures.map((f) => ({
-        ...f,
-        position: [
-          f.position[0] * SCENE_ROOM_SCALE,
-          f.position[1],
-          f.position[2] * SCENE_ROOM_SCALE,
-        ] as [number, number, number],
-      })),
+      fixtures: layout.fixtures.map((f) => {
+        const override = fixtureOverrides[f.id];
+        return {
+          ...f,
+          position: override?.position
+            ? override.position
+            : ([
+                f.position[0] * SCENE_ROOM_SCALE,
+                f.position[1],
+                f.position[2] * SCENE_ROOM_SCALE,
+              ] as [number, number, number]),
+          rotationY:
+            override?.rotationY !== undefined
+              ? override.rotationY
+              : f.rotationY,
+        };
+      }),
     }),
-    [layout],
+    [layout, fixtureOverrides],
   );
+
+  const handleFixtureMove = useCallback(
+    (id: string, position: [number, number, number]) => {
+      setFixtureOverrides((prev) => ({
+        ...prev,
+        [id]: { ...prev[id], position },
+      }));
+    },
+    [],
+  );
+  const handleFixtureRotate = useCallback((id: string, rotationY: number) => {
+    setFixtureOverrides((prev) => ({
+      ...prev,
+      [id]: { ...prev[id], rotationY },
+    }));
+  }, []);
+  const handleFixtureDragStart = useCallback(() => {
+    if (controlsRef.current) controlsRef.current.enabled = false;
+  }, []);
+  const handleFixtureDragEnd = useCallback(() => {
+    if (controlsRef.current) controlsRef.current.enabled = true;
+  }, []);
+
+  const [hoverInfo, setHoverInfo] = useState<HoverInfo | null>(null);
+  const handleHoverChange = useCallback((info: HoverInfo | null) => {
+    setHoverInfo(info);
+  }, []);
 
   const { camPos, target, distance, bounds } = useMemo(() => {
     let minX = Infinity,
@@ -225,20 +276,27 @@ export function SceneViewer({
           shadows
           gl={{ antialias: true }}
         >
-          <color attach="background" args={["#0a0d12"]} />
-          <ambientLight intensity={0.55} />
+          <color attach="background" args={["#161c23"]} />
+          <ambientLight intensity={0.85} />
           <directionalLight
             position={[8, 12, 6]}
-            intensity={1.1}
+            intensity={1.4}
             castShadow
             shadow-mapSize-width={1024}
             shadow-mapSize-height={1024}
           />
-          <directionalLight position={[-6, 6, -4]} intensity={0.3} />
-          <hemisphereLight args={["#dde9f1", "#1a1f24", 0.4]} />
+          <directionalLight position={[-6, 6, -4]} intensity={0.55} />
+          <hemisphereLight args={["#e6eef5", "#2a323a", 0.7]} />
 
           <Suspense fallback={null}>
-            <RoomScene layout={scaledLayout} />
+            <RoomScene
+              layout={scaledLayout}
+              onFixtureMove={handleFixtureMove}
+              onFixtureRotate={handleFixtureRotate}
+              onFixtureDragStart={handleFixtureDragStart}
+              onFixtureDragEnd={handleFixtureDragEnd}
+              onHoverChange={handleHoverChange}
+            />
 
             {onlinePlacements.length > 0 ? (
               <OnlinePlacements items={onlinePlacements} />
@@ -299,6 +357,28 @@ export function SceneViewer({
             </>
           ) : null}
         </div>
+        {hoverInfo ? (
+          <div
+            className="pointer-events-none absolute right-3 top-3 flex w-[min(560px,calc(100%-1.5rem))] items-center gap-3 rounded-lg border-2 bg-bg-elevated/95 px-4 py-2.5 shadow-xl backdrop-blur"
+            style={{ borderColor: hoverInfo.accentColor }}
+          >
+            <span
+              className="inline-block h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-white/20"
+              style={{ background: hoverInfo.accentColor }}
+            />
+            <span className="text-sm font-semibold text-foreground">
+              {hoverInfo.title}
+            </span>
+            {hoverInfo.subtitle ? (
+              <>
+                <span className="text-fg-subtle/60">·</span>
+                <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+                  {hoverInfo.subtitle}
+                </span>
+              </>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </div>
   );
