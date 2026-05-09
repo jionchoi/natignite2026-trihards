@@ -9,6 +9,7 @@ import {
   FastForward,
   Loader2,
   Play,
+  Send,
   Sparkles,
   Square,
   UserPlus,
@@ -23,6 +24,7 @@ import {
 import { type ReportEvent } from "@/components/viewer/AgentSimulation";
 import { ALL_PERSONAS, type Persona } from "@/lib/personas";
 import type { SceneSuggestionItem } from "@/lib/sceneSuggestions";
+import type { Fixture } from "@/lib/schemas";
 
 const BASE_SPEED = 0.6;
 const SPEED_STEPS = [1, 2, 3, 4];
@@ -49,9 +51,19 @@ export function SceneView() {
   const [suggestLoading, setSuggestLoading] = useState(false);
   const [suggestError, setSuggestError] = useState<string | null>(null);
 
+  // Natural-language editor state — fixtures Gemini has appended in response
+  // to the user's prompt, plus the input box and request lifecycle.
+  const [extraFixtures, setExtraFixtures] = useState<Fixture[]>([]);
+  const [editPrompt, setEditPrompt] = useState("");
+  const [editLoading, setEditLoading] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+
   useEffect(() => {
     setOnlinePlacements([]);
     setSuggestError(null);
+    setExtraFixtures([]);
+    setEditError(null);
+    setEditPrompt("");
   }, [session.id]);
 
   const addPerson = () => {
@@ -93,6 +105,58 @@ export function SceneView() {
       return [next, ...prev].slice(0, MAX_REPORTS);
     });
   }, []);
+
+  const submitEdit = useCallback(async () => {
+    if (!layout) return;
+    const trimmed = editPrompt.trim();
+    if (!trimmed) return;
+    setEditLoading(true);
+    setEditError(null);
+    try {
+      // Send the fixtures the user is currently looking at (originals + any
+      // fixtures previously added via prompt) so Gemini can resolve "in front
+      // of the seating" against the live state, not just the initial scan.
+      const effectiveLayout = {
+        ...layout,
+        fixtures: [...layout.fixtures, ...extraFixtures],
+      };
+      const res = await fetch("/api/scene-edit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: trimmed, layout: effectiveLayout }),
+      });
+      const data = (await res.json()) as {
+        ops?: Array<{
+          op: "add";
+          fixture: Fixture;
+        }>;
+        error?: string;
+        details?: string;
+      };
+      if (!res.ok) {
+        throw new Error(
+          data.details || data.error || `Request failed (${res.status})`,
+        );
+      }
+      const adds = (data.ops ?? [])
+        .filter((o) => o.op === "add")
+        .map((o) => o.fixture);
+      if (!adds.length) {
+        throw new Error("No changes were generated");
+      }
+      setExtraFixtures((prev) => [...prev, ...adds]);
+      setEditPrompt("");
+    } catch (e) {
+      setEditError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setEditLoading(false);
+    }
+  }, [layout, editPrompt, extraFixtures]);
+
+  const clearEdits = () => {
+    setExtraFixtures([]);
+    setEditError(null);
+  };
 
   const runSuggestAndPlace = useCallback(async () => {
     if (!layout) return;
@@ -291,8 +355,71 @@ export function SceneView() {
             speed={BASE_SPEED * speedMultiplier}
             onReport={handleReport}
             onlinePlacements={onlinePlacements}
+            extraFixtures={extraFixtures}
             className="h-[70vh] min-h-[480px] w-full"
           />
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!editLoading) submitEdit();
+            }}
+            className="frosted-glass flex flex-col gap-2 rounded-2xl px-4 py-3"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">
+                  Edit the scene with words
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  e.g. &ldquo;put a ramp right in front of the seating
+                  platform&rdquo; or &ldquo;add a grab bar next to the
+                  toilet&rdquo;.
+                  {extraFixtures.length > 0 ? (
+                    <>
+                      {" "}
+                      {extraFixtures.length} added fixture
+                      {extraFixtures.length === 1 ? "" : "s"}.
+                    </>
+                  ) : null}
+                </p>
+              </div>
+              {extraFixtures.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={clearEdits}
+                  className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-secondary/40 px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary/60"
+                >
+                  <X className="h-3.5 w-3.5" />
+                  Clear
+                </button>
+              ) : null}
+            </div>
+            <div className="flex items-stretch gap-2">
+              <input
+                type="text"
+                value={editPrompt}
+                onChange={(e) => setEditPrompt(e.target.value)}
+                placeholder="Describe a change to make…"
+                disabled={editLoading}
+                className="h-10 flex-1 rounded-lg border border-border bg-bg-elevated/70 px-3 text-sm text-foreground placeholder:text-fg-subtle focus:border-border-strong focus:outline-none disabled:opacity-60"
+              />
+              <button
+                type="submit"
+                disabled={editLoading || !editPrompt.trim()}
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {editLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+                Apply
+              </button>
+            </div>
+            {editError ? (
+              <p className="text-xs text-destructive">{editError}</p>
+            ) : null}
+          </form>
           <SimulationReports
             reports={reports}
             issues={issues}

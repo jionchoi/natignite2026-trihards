@@ -4,7 +4,7 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
-import { type Issue, type RoomLayout } from "@/lib/schemas";
+import { type Fixture, type Issue, type RoomLayout } from "@/lib/schemas";
 import { type Persona } from "@/lib/personas";
 import { SCENE_ROOM_SCALE } from "@/lib/sceneScale";
 import type { SceneSuggestionItem } from "@/lib/sceneSuggestions";
@@ -28,6 +28,9 @@ interface SceneViewerProps {
   onReport?: (e: ReportEvent) => void;
   /** AI-suggested props loaded as GLBs from curated online URLs */
   onlinePlacements?: SceneSuggestionItem[];
+  /** Procedural fixtures added by the natural-language edit panel (unscaled
+   * coords, treated identically to layout.fixtures). */
+  extraFixtures?: Fixture[];
   className?: string;
 }
 
@@ -43,6 +46,7 @@ export function SceneViewer({
   speed,
   onReport,
   onlinePlacements = [],
+  extraFixtures = [],
   className,
 }: SceneViewerProps) {
   const controlsRef = useRef<any>(null);
@@ -80,7 +84,7 @@ export function SceneViewer({
         ] as [number, number],
         height: w.height,
       })),
-      fixtures: layout.fixtures.map((f) => {
+      fixtures: [...layout.fixtures, ...extraFixtures].map((f) => {
         const override = fixtureOverrides[f.id];
         return {
           ...f,
@@ -98,7 +102,7 @@ export function SceneViewer({
         };
       }),
     }),
-    [layout, fixtureOverrides],
+    [layout, extraFixtures, fixtureOverrides],
   );
 
   const handleFixtureMove = useCallback(
