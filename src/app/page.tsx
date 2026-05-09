@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Sparkles, Loader2, DoorOpen, Bath, ParkingCircle, Store } from "lucide-react";
-import { ParticleBackground } from "@frontend/components/particle-background";
 import { DropZone } from "@/components/upload/DropZone";
 import { FilePreview } from "@/components/upload/FilePreview";
 import { ContextForm, type ContextValue } from "@/components/upload/ContextForm";
@@ -52,8 +51,6 @@ export default function HomePage() {
   return (
     <>
       <main className="relative min-h-screen overflow-hidden">
-        <ParticleBackground />
-
         <div className="relative z-10 flex flex-col items-center px-4 py-8 sm:py-12 md:py-16">
           <header className="text-center mb-8 sm:mb-12">
             <div className="flex items-center justify-center gap-2 sm:gap-3 mb-3 sm:mb-4">

@@ -48,10 +48,10 @@
 
 /* Frosted glass surface used across the redesigned UI */
 .frosted-glass {
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  background: rgba(25, 34, 42, 0.6);
-  border: 1px solid rgba(50, 66, 80, 0.5);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  background: rgba(36, 47, 66, 0.52);
+  border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 /* Teal glow used for highlight surfaces */
@@ -119,3 +119,458 @@
 .animate-fade-in {
   animation: fade-in 0.6s ease-out forwards;
 }
+
+/* ═══ Global ambient background (ParticleBackground + AppChrome) ═══ */
+
+@keyframes fisheye-sphere-drift {
+  0% {
+    transform: perspective(1180px) rotateX(69deg) rotateZ(-3deg) scale(1.03);
+  }
+  50% {
+    transform: perspective(1180px) rotateX(73deg) rotateZ(0deg) scale(1.06);
+  }
+  100% {
+    transform: perspective(1180px) rotateX(76deg) rotateZ(2.5deg) scale(1.07);
+  }
+}
+
+@keyframes halftone-flow-x {
+  0% {
+    transform: translateX(0) translateY(0);
+  }
+  100% {
+    transform: translateX(-56px) translateY(-10px);
+  }
+}
+
+@keyframes halftone-flow-x-reverse {
+  0% {
+    transform: translateX(0) translateY(0);
+  }
+  100% {
+    transform: translateX(48px) translateY(8px);
+  }
+}
+
+@keyframes sync-sheet-flow {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-72px);
+  }
+}
+
+@keyframes a11y-glyph-drift {
+  0% {
+    transform: translate(0, 0) rotate(-5deg);
+    opacity: 0.55;
+  }
+  100% {
+    transform: translate(10px, -14px) rotate(6deg);
+    opacity: 1;
+  }
+}
+
+@keyframes scanline-drift {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(96px);
+  }
+}
+
+@keyframes vignette-shift {
+  0%,
+  100% {
+    opacity: 0.92;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+}
+
+@keyframes orb-slide-a {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.52;
+  }
+  100% {
+    transform: translate(5%, 10%) scale(1.08);
+    opacity: 0.68;
+  }
+}
+
+@keyframes orb-slide-b {
+  0% {
+    transform: translate(0, 0) scale(1.03);
+    opacity: 0.48;
+  }
+  100% {
+    transform: translate(-8%, -5%) scale(1.06);
+    opacity: 0.62;
+  }
+}
+
+@keyframes orb-slide-c {
+  0% {
+    transform: translate(-50%, -50%) scale(0.96);
+    opacity: 0.42;
+  }
+  100% {
+    transform: translate(calc(-50% + 18px), calc(-50% - 14px)) scale(1.04);
+    opacity: 0.58;
+  }
+}
+
+.particle-bg-root {
+  isolation: isolate;
+}
+
+.particle-bg-root--subtle .particle-bg-orbs,
+.particle-bg-root--subtle .particle-bg-ambient {
+  opacity: 0.72;
+}
+
+.particle-bg-root--subtle .particle-bg-fisheye-sphere {
+  filter: brightness(1.05) saturate(1.03);
+}
+
+.particle-bg-root--subtle .particle-bg-plane--a {
+  opacity: 0.38 !important;
+}
+
+.particle-bg-root--subtle .particle-bg-plane--b {
+  opacity: 0.28 !important;
+}
+
+.particle-bg-root--subtle .particle-bg-noise {
+  opacity: 0.028 !important;
+}
+
+.particle-bg-root--subtle .particle-bg-chroma-edge {
+  opacity: 0.22 !important;
+}
+
+.particle-bg-void {
+  background:
+    radial-gradient(ellipse 105% 72% at 50% -8%, rgba(72, 92, 128, 0.38) 0%, transparent 58%),
+    radial-gradient(ellipse 65% 50% at 88% 72%, rgba(55, 72, 105, 0.24) 0%, transparent 52%),
+    #1a2333;
+}
+
+.particle-bg-orbs {
+  overflow: hidden;
+}
+
+.particle-bg-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(88px);
+  will-change: transform, opacity;
+}
+
+.particle-bg-orb-a {
+  width: min(58vw, 500px);
+  height: min(58vw, 500px);
+  left: -10%;
+  top: 14%;
+  background: radial-gradient(circle, rgba(240, 248, 255, 0.16) 0%, transparent 72%);
+  animation: orb-slide-a 56s ease-in-out infinite alternate;
+}
+
+.particle-bg-orb-b {
+  width: min(72vw, 640px);
+  height: min(72vw, 640px);
+  right: -20%;
+  bottom: -6%;
+  background: radial-gradient(circle, rgba(200, 218, 250, 0.12) 0%, transparent 70%);
+  animation: orb-slide-b 72s ease-in-out infinite alternate;
+}
+
+.particle-bg-orb-c {
+  width: min(48vw, 420px);
+  height: min(48vw, 420px);
+  left: 36%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 68%);
+  animation: orb-slide-c 48s ease-in-out infinite alternate;
+}
+
+.particle-bg-ambient {
+  background:
+    radial-gradient(ellipse 58% 44% at 24% 30%, rgba(220, 230, 255, 0.1) 0%, transparent 58%),
+    radial-gradient(ellipse 52% 48% at 78% 68%, rgba(160, 180, 220, 0.08) 0%, transparent 58%);
+  animation: vignette-shift 40s ease-in-out infinite alternate;
+  opacity: 0.9;
+}
+
+.particle-bg-fisheye-root {
+  pointer-events: none;
+}
+
+.particle-bg-fisheye-sphere {
+  width: min(192vmin, 3000px);
+  height: min(192vmin, 3000px);
+  flex-shrink: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  transform-style: preserve-3d;
+  transform: perspective(1180px) rotateX(72deg) scale(1.04);
+  animation: fisheye-sphere-drift 68s ease-in-out infinite alternate;
+  box-shadow:
+    inset 0 0 200px rgba(0, 0, 0, 0.28),
+    inset 0 -70px 180px rgba(0, 0, 0, 0.22);
+  filter: brightness(1.12) saturate(1.06);
+}
+
+.particle-bg-depth--fisheye {
+  transform: translateZ(0);
+}
+
+.particle-bg-plane {
+  transform-style: preserve-3d;
+  will-change: transform;
+  background-image:
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.2) 1px, transparent 1.15px),
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+  background-size:
+    28px 28px,
+    120px 120px,
+    120px 120px;
+}
+
+.particle-bg-plane--a {
+  animation: halftone-flow-x 26s linear infinite;
+  opacity: 0.62;
+}
+
+.particle-bg-plane--b {
+  background-size:
+    22px 22px,
+    96px 96px,
+    96px 96px;
+  animation: halftone-flow-x-reverse 34s linear infinite;
+  opacity: 0.46;
+}
+
+.particle-bg-sync-flow {
+  animation: sync-sheet-flow 52s linear infinite;
+}
+
+.particle-bg-root--subtle .particle-bg-sync-flow {
+  animation-duration: 76s;
+  opacity: 0.82;
+}
+
+.particle-bg-geometry {
+  overflow: hidden;
+}
+
+.particle-bg-geo-anchor {
+  position: absolute;
+  transform: translate(-50%, -50%);
+}
+
+.particle-bg-geo-scale {
+  display: grid;
+  place-items: center;
+}
+
+.particle-bg-geo-plus {
+  font-family: var(--font-geist-mono, ui-monospace, monospace);
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.55);
+  text-shadow: 0 0 14px rgba(255, 255, 255, 0.45);
+  animation-name: geo-twinkle;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+  animation-duration: 22s;
+}
+
+.particle-bg-geo-rhomb {
+  display: block;
+  width: 13px;
+  height: 13px;
+  border: 1.5px solid rgba(255, 255, 255, 0.45);
+  box-shadow: 0 0 14px rgba(255, 255, 255, 0.25);
+  transform: rotate(45deg);
+  animation-name: geo-twinkle-rhomb;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+  animation-duration: 22s;
+}
+
+.particle-bg-geo-ring {
+  display: block;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 0 16px rgba(230, 240, 255, 0.35);
+  animation-name: geo-twinkle;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+  animation-duration: 22s;
+}
+
+@keyframes geo-twinkle {
+  0% {
+    opacity: 0.35;
+  }
+  100% {
+    opacity: 0.85;
+  }
+}
+
+@keyframes geo-twinkle-rhomb {
+  0% {
+    opacity: 0.35;
+    transform: rotate(45deg) translate(0, 0);
+  }
+  100% {
+    opacity: 0.85;
+    transform: rotate(45deg) translate(6px, -10px);
+  }
+}
+
+.particle-bg-a11y-anchor {
+  position: absolute;
+  transform: translate(-50%, -50%);
+}
+
+.particle-bg-a11y-scale {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.particle-bg-a11y-svg {
+  width: 1.35rem;
+  height: 1.35rem;
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.55));
+}
+
+.particle-bg-canvas-wrap {
+  mask-image: radial-gradient(
+    ellipse 96% 93% at 50% 48%,
+    black 38%,
+    rgba(0, 0, 0, 0.85) 74%,
+    transparent 100%
+  );
+  -webkit-mask-image: radial-gradient(
+    ellipse 96% 93% at 50% 48%,
+    black 38%,
+    rgba(0, 0, 0, 0.85) 74%,
+    transparent 100%
+  );
+}
+
+.particle-bg-noise {
+  opacity: 0.042;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+}
+
+.particle-bg-vignette {
+  background: radial-gradient(
+    ellipse 80% 68% at 50% 44%,
+    transparent 52%,
+    rgba(12, 16, 24, 0.42) 100%
+  );
+  animation: vignette-shift 44s ease-in-out infinite alternate;
+}
+
+.particle-bg-scanlines-fine {
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 1px,
+    rgba(255, 255, 255, 0.055) 1px,
+    rgba(255, 255, 255, 0.055) 2px
+  );
+  background-size: 100% 2px;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+  mask-image: linear-gradient(to bottom, transparent, black 6%, black 94%, transparent);
+  animation: scanline-drift 13s linear infinite;
+  opacity: 0.18;
+}
+
+.particle-bg-scanlines {
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 2px,
+    rgba(255, 255, 255, 0.035) 2px,
+    rgba(255, 255, 255, 0.035) 3px
+  );
+  background-size: 100% 3px;
+  pointer-events: none;
+  mask-image: linear-gradient(to bottom, transparent, black 8%, black 92%, transparent);
+  animation: scanline-drift 20s linear infinite;
+}
+
+.particle-bg-chroma-edge {
+  background: repeating-linear-gradient(
+    104deg,
+    transparent 0,
+    transparent 18px,
+    rgba(130, 170, 255, 0.04) 19px,
+    transparent 21px,
+    transparent 42px,
+    rgba(255, 150, 140, 0.032) 43px,
+    transparent 45px
+  );
+  opacity: 0.38;
+  mix-blend-mode: soft-light;
+  animation: vignette-shift 22s linear infinite alternate;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .particle-bg-fisheye-sphere,
+  .particle-bg-plane--a,
+  .particle-bg-plane--b,
+  .particle-bg-sync-flow,
+  .particle-bg-ambient,
+  .particle-bg-vignette,
+  .particle-bg-scanlines,
+  .particle-bg-scanlines-fine,
+  .particle-bg-chroma-edge,
+  .particle-bg-orb-a,
+  .particle-bg-orb-b,
+  .particle-bg-orb-c {
+    animation: none !important;
+  }
+
+  .particle-bg-sync-flow {
+    transform: none;
+    opacity: 0.75;
+  }
+
+  .particle-bg-geo-plus,
+  .particle-bg-geo-rhomb,
+  .particle-bg-geo-ring {
+    animation: none !important;
+    opacity: 0.45;
+  }
+
+  .particle-bg-geo-rhomb {
+    transform: rotate(45deg);
+  }
+
+  .particle-bg-a11y-scale {
+    animation: none !important;
+    opacity: 0.65;
+  }
+}
+
