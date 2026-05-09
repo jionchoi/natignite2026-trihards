@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   Box,
@@ -16,6 +16,8 @@ import {
   Wand2,
   X,
 } from "lucide-react";
+import type * as THREE from "three";
+import { ImportExportButton } from "@/components/io";
 import { useSession } from "@/lib/store";
 import {
   SimulationReports,
@@ -40,6 +42,7 @@ export function SceneView() {
   const session = useSession();
   const layout = session.analysis?.roomLayout ?? null;
   const issues = session.analysis?.issues ?? [];
+  const sceneRef = useRef<THREE.Scene | null>(null);
 
   const [simRunning, setSimRunning] = useState(false);
   const [reports, setReports] = useState<ReportLogEntry[]>([]);
@@ -204,7 +207,7 @@ export function SceneView() {
     });
   };
 
-  if (!session.imageDataUrl || !session.analysis) {
+  if (!session.analysis) {
     return (
       <div className="frosted-glass rounded-2xl p-8 text-center animate-slide-in-up">
         <h2 className="text-lg font-semibold text-foreground">
@@ -240,6 +243,10 @@ export function SceneView() {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <ImportExportButton
+            sceneRef={sceneRef}
+            analysisReady={!!session.analysis}
+          />
           {layout ? (
             <>
               <button
@@ -316,13 +323,15 @@ export function SceneView() {
               </button>
             </>
           ) : null}
-          <Link
-            href={`/analyze/${session.id}`}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-border bg-secondary/40 px-4 text-sm font-medium text-foreground transition-colors hover:border-border-strong hover:bg-secondary/60"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to photo view
-          </Link>
+          {session.imageDataUrl ? (
+            <Link
+              href={`/analyze/${session.id}`}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-border bg-secondary/40 px-4 text-sm font-medium text-foreground transition-colors hover:border-border-strong hover:bg-secondary/60"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to photo view
+            </Link>
+          ) : null}
         </div>
       </div>
 
@@ -356,6 +365,7 @@ export function SceneView() {
             onReport={handleReport}
             onlinePlacements={onlinePlacements}
             extraFixtures={extraFixtures}
+            sceneRef={sceneRef}
             className="h-[70vh] min-h-[480px] w-full"
           />
           <form

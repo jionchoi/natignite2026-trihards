@@ -4,6 +4,8 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Sparkles, RotateCcw, Box } from "lucide-react";
+import type * as THREE from "three";
+import { ImportExportButton } from "@/components/io";
 import { ProcessingScreen } from "@/components/processing/ProcessingScreen";
 import { AccessibilityReport } from "@/components/report/AccessibilityReport";
 import { UploadStepper } from "@/components/upload/UploadStepper";
@@ -19,6 +21,7 @@ const MeshViewer = dynamic(
 export function AnalyzeView() {
   const session = useSession();
   const startedRef = useRef(false);
+  const meshRef = useRef<THREE.Mesh | null>(null);
   const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
 
   // Default-select the most severe pinned issue once analysis is available, so
@@ -42,7 +45,9 @@ export function AnalyzeView() {
   }, [pinnedIssues, selectedIssueId]);
 
   useEffect(() => {
-    if (!session.imageDataUrl || startedRef.current) return;
+    if (!session.imageDataUrl || startedRef.current || session.stage === "done") {
+      return;
+    }
     startedRef.current = true;
 
     const run = async () => {
@@ -144,6 +149,18 @@ export function AnalyzeView() {
 
   return (
     <div className="space-y-4 animate-slide-in-up">
+      <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card/35 px-4 py-3 backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-sm font-semibold text-foreground">
+            Accessibility analysis
+          </h1>
+        </div>
+        <ImportExportButton
+          meshRef={meshRef}
+          analysisReady={session.stage === "done" && !!session.analysis}
+        />
+      </div>
+
       <div className="flex flex-col gap-2">
         <MeshViewer
           imageUrl={session.imageDataUrl}
@@ -151,6 +168,7 @@ export function AnalyzeView() {
           issues={session.analysis.issues}
           selectedIssueId={selectedIssueId}
           onSelectIssue={setSelectedIssueId}
+          meshRef={meshRef}
           className="h-[80vh] min-h-[520px] w-full"
         />
         <div className="flex items-center justify-between gap-3">

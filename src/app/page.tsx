@@ -7,6 +7,7 @@ import { Sparkles, Loader2, DoorOpen, Bath, ParkingCircle, Store } from "lucide-
 import { DropZone } from "@/components/upload/DropZone";
 import { FilePreview } from "@/components/upload/FilePreview";
 import { ContextForm, type ContextValue } from "@/components/upload/ContextForm";
+import { ImportExportButton } from "@/components/io";
 import { fileToDataUrl, generateId } from "@/lib/image";
 import { useSession } from "@/lib/store";
 
@@ -51,7 +52,10 @@ export default function HomePage() {
   return (
     <>
       <main className="relative min-h-screen overflow-hidden">
-        <div className="relative z-10 flex flex-col items-center px-4 py-8 sm:py-12 md:py-16">
+        <div className="absolute right-4 top-4 z-20 sm:right-6 sm:top-6">
+          <ImportExportButton />
+        </div>
+        <div className="relative z-10 flex flex-col items-center px-4 pb-8 pt-20 sm:pb-12 sm:pt-24 md:pb-16">
           <header className="text-center mb-8 sm:mb-12">
             <div className="flex items-center justify-center gap-2 sm:gap-3 mb-3 sm:mb-4">
               <div className="p-2 sm:p-2.5 rounded-xl bg-primary/10 teal-glow">

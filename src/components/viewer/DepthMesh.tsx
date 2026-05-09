@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, type MutableRefObject } from "react";
 import * as THREE from "three";
 import { useMeshGeometry } from "./useMeshGeometry";
 
@@ -10,6 +10,7 @@ interface DepthMeshProps {
   displacement?: number;
   segments?: number;
   wireframe?: boolean;
+  meshRef?: MutableRefObject<THREE.Mesh | null>;
 }
 
 export function DepthMesh({
@@ -18,14 +19,59 @@ export function DepthMesh({
   displacement = 1.2,
   segments = 384,
   wireframe = false,
+  meshRef,
 }: DepthMeshProps) {
-  const { colorMap, depthMap, width, height, sampleDepth } = useMeshGeometry(
+  const { colorMap, width, height, sampleDepth } = useMeshGeometry(
     imageUrl,
     depthUrl,
   );
+  const frontMeshRef = useRef<THREE.Mesh | null>(null);
 
   const boxDepth = Math.max(displacement, 0.4);
   const cubeColor = "#1a1d24";
+
+  const frontGeometry = useMemo(() => {
+    if (!sampleDepth) return null;
+
+    const positions: number[] = [];
+    const uvs: number[] = [];
+    const indices: number[] = [];
+    const halfW = width / 2;
+    const halfH = height / 2;
+
+    for (let y = 0; y <= segments; y++) {
+      const v = y / segments;
+      for (let x = 0; x <= segments; x++) {
+        const u = x / segments;
+        positions.push(
+          -halfW + u * width,
+          -halfH + v * height,
+          -displacement + sampleDepth(u, v) * displacement,
+        );
+        uvs.push(u, v);
+      }
+    }
+
+    for (let y = 0; y < segments; y++) {
+      for (let x = 0; x < segments; x++) {
+        const a = y * (segments + 1) + x;
+        const b = a + 1;
+        const c = a + segments + 1;
+        const d = c + 1;
+        indices.push(a, b, d, a, d, c);
+      }
+    }
+
+    const geom = new THREE.BufferGeometry();
+    geom.setAttribute(
+      "position",
+      new THREE.Float32BufferAttribute(positions, 3),
+    );
+    geom.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+    geom.setIndex(indices);
+    geom.computeVertexNormals();
+    return geom;
+  }, [sampleDepth, width, height, segments, displacement]);
 
   // Skirt walls (top/bottom/left/right) hugging the carved photo edge, plus a
   // back wall. No fixed rectangular side walls — the cube outline tracks the
@@ -117,32 +163,46 @@ export function DepthMesh({
     return geom;
   }, [sampleDepth, width, height, displacement, boxDepth, segments]);
 
-  // Dispose previous geometry on change/unmount.
-  const prevGeomRef = useRef<THREE.BufferGeometry | null>(null);
   useEffect(() => {
-    const old = prevGeomRef.current;
-    prevGeomRef.current = shellGeometry;
     return () => {
-      old?.dispose();
+      shellGeometry?.dispose();
     };
   }, [shellGeometry]);
+
+  useEffect(() => {
+    return () => {
+      frontGeometry?.dispose();
+    };
+  }, [frontGeometry]);
+
+  useEffect(() => {
+    const mesh = frontMeshRef.current;
+    if (mesh) {
+      mesh.userData.accessifySegments = { x: segments, y: segments };
+    }
+    if (meshRef) {
+      meshRef.current = mesh;
+      return () => {
+        if (meshRef.current === mesh) meshRef.current = null;
+      };
+    }
+    return undefined;
+  }, [frontGeometry, meshRef, segments]);
 
   return (
     <group>
       {/* Front face — depth-displaced inward, photo carved into the cube. */}
-      <mesh position={[0, 0, 0]}>
-        <planeGeometry args={[width, height, segments, segments]} />
-        <meshStandardMaterial
-          map={colorMap}
-          displacementMap={depthMap}
-          displacementScale={displacement}
-          displacementBias={-displacement}
-          wireframe={wireframe}
-          side={THREE.DoubleSide}
-          roughness={0.7}
-          metalness={0.05}
-        />
-      </mesh>
+      {frontGeometry ? (
+        <mesh ref={frontMeshRef} geometry={frontGeometry} position={[0, 0, 0]}>
+          <meshStandardMaterial
+            map={colorMap}
+            wireframe={wireframe}
+            side={THREE.DoubleSide}
+            roughness={0.7}
+            metalness={0.05}
+          />
+        </mesh>
+      ) : null}
 
       {/* Cube shell: skirts hug the carved edge, back wall closes the box. */}
       {shellGeometry ? (

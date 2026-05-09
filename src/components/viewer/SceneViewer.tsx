@@ -1,7 +1,15 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Canvas } from "@react-three/fiber";
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MutableRefObject,
+} from "react";
+import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import { type Fixture, type Issue, type RoomLayout } from "@/lib/schemas";
@@ -31,6 +39,7 @@ interface SceneViewerProps {
   /** Procedural fixtures added by the natural-language edit panel (unscaled
    * coords, treated identically to layout.fixtures). */
   extraFixtures?: Fixture[];
+  sceneRef?: MutableRefObject<THREE.Scene | null>;
   className?: string;
 }
 
@@ -47,6 +56,7 @@ export function SceneViewer({
   onReport,
   onlinePlacements = [],
   extraFixtures = [],
+  sceneRef,
   className,
 }: SceneViewerProps) {
   const controlsRef = useRef<any>(null);
@@ -280,6 +290,7 @@ export function SceneViewer({
           shadows
           gl={{ antialias: true }}
         >
+          <SceneCapture sceneRef={sceneRef} />
           <color attach="background" args={["#161c23"]} />
           <ambientLight intensity={0.85} />
           <directionalLight
@@ -386,4 +397,22 @@ export function SceneViewer({
       </div>
     </div>
   );
+}
+
+function SceneCapture({
+  sceneRef,
+}: {
+  sceneRef?: MutableRefObject<THREE.Scene | null>;
+}) {
+  const { scene } = useThree();
+
+  useEffect(() => {
+    if (!sceneRef) return undefined;
+    sceneRef.current = scene;
+    return () => {
+      if (sceneRef.current === scene) sceneRef.current = null;
+    };
+  }, [scene, sceneRef]);
+
+  return null;
 }
