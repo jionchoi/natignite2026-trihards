@@ -13,7 +13,9 @@ import { Badge } from "@/components/ui/Badge";
 export interface ReportLogEntry {
   issueId: string;
   persona: Persona;
-  ts: number;
+  count: number;
+  firstTs: number;
+  lastTs: number;
 }
 
 interface SimulationReportsProps {
@@ -57,12 +59,12 @@ export function SimulationReports({
         </p>
       </div>
       <ul className="divide-y divide-border">
-        {reports.map((r, idx) => {
+        {reports.map((r) => {
           const issue = issuesById.get(r.issueId);
           if (!issue) return null;
           const accent = PERSONA_COLOR[r.persona];
           return (
-            <li key={`${r.issueId}-${r.ts}-${idx}`} className="px-5 py-3">
+            <li key={`${r.issueId}-${r.persona}`} className="px-5 py-3">
               <div className="flex items-center gap-2">
                 <span
                   className="inline-block h-2 w-2 rounded-full"
@@ -74,6 +76,14 @@ export function SimulationReports({
                 <span className="text-xs text-fg-subtle">
                   hit {CATEGORY_LABEL[issue.category].toLowerCase()} issue
                 </span>
+                {r.count > 1 ? (
+                  <span
+                    className="rounded-full bg-bg-elevated px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-foreground"
+                    title={`Encountered ${r.count} times`}
+                  >
+                    ×{r.count}
+                  </span>
+                ) : null}
                 <Badge severity={issue.severity} className="ml-auto">
                   {SEVERITY_LABEL[issue.severity]}
                 </Badge>

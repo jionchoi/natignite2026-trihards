@@ -68,12 +68,30 @@ export function SceneView() {
   const speedMultiplier = SPEED_STEPS[speedStepIdx];
 
   const handleReport = useCallback((e: ReportEvent) => {
-    setReports((prev) =>
-      [{ issueId: e.issueId, persona: e.persona, ts: e.ts }, ...prev].slice(
-        0,
-        MAX_REPORTS,
-      ),
-    );
+    setReports((prev) => {
+      const idx = prev.findIndex(
+        (r) => r.issueId === e.issueId && r.persona === e.persona,
+      );
+      if (idx >= 0) {
+        // Same person hit the same barrier again — bump count, refresh
+        // last-seen time, and float the entry to the top of the log.
+        const existing = prev[idx];
+        const updated: ReportLogEntry = {
+          ...existing,
+          count: existing.count + 1,
+          lastTs: e.ts,
+        };
+        return [updated, ...prev.slice(0, idx), ...prev.slice(idx + 1)];
+      }
+      const next: ReportLogEntry = {
+        issueId: e.issueId,
+        persona: e.persona,
+        count: 1,
+        firstTs: e.ts,
+        lastTs: e.ts,
+      };
+      return [next, ...prev].slice(0, MAX_REPORTS);
+    });
   }, []);
 
   const runSuggestAndPlace = useCallback(async () => {
