@@ -69,7 +69,7 @@ export default function HomePage() {
         </div>
 
         <p className="mt-12 text-[11px] uppercase tracking-[0.25em] text-fg-subtle sm:text-xs">
-          built with computer vision · gemini · webgl
+          built with computer vision · depthai · gemini api · webgl
         </p>
       </section>
     </main>
