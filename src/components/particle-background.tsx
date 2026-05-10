@@ -49,6 +49,13 @@ interface ParticleBackgroundProps {
   intensity?: BackgroundIntensity;
 }
 
+interface DomMarkerState {
+  x: number;
+  y: number;
+  rot: number;
+  el: HTMLElement;
+}
+
 export function ParticleBackground({
   intensity = "subtle",
 }: ParticleBackgroundProps) {
@@ -57,6 +64,16 @@ export function ParticleBackground({
   const shapesRef = useRef<FloatShape[]>([]);
   const animationRef = useRef<number>(0);
   const windRef = useRef(0);
+  // Live cursor position (CSS px, viewport-relative). null = pointer outside window.
+  const mouseRef = useRef<{ x: number; y: number } | null>(null);
+  // Containers for the bright DOM-rendered glow markers (geo + a11y glyphs).
+  // We grab their children imperatively and drive position with transforms so
+  // the same wind + cursor-scatter physics that affects the canvas particles
+  // also affects the brightest particles you can see at the front layer.
+  const geoBoxRef = useRef<HTMLDivElement>(null);
+  const a11yBoxRef = useRef<HTMLDivElement>(null);
+  const geoStateRef = useRef<DomMarkerState[]>([]);
+  const a11yStateRef = useRef<DomMarkerState[]>([]);
 
   const landing = intensity === "landing";
 
@@ -157,6 +174,104 @@ export function ParticleBackground({
       }
     };
 
+    const initDomMarkers = () => {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const seed = (
+        ref: React.MutableRefObject<HTMLDivElement | null>,
+        store: React.MutableRefObject<DomMarkerState[]>,
+        positions: { left: string; top: string }[],
+      ) => {
+        const root = ref.current;
+        if (!root) {
+          store.current = [];
+          return;
+        }
+        const anchors = Array.from(root.children) as HTMLElement[];
+        store.current = anchors.map((el, i) => {
+          // Read spawn-time left/top (e.g. "42%") from the React data —
+          // robust against effect re-runs after we've stomped el.style.left.
+          const src = positions[i] ?? { left: "50%", top: "50%" };
+          const leftPct = parseFloat(src.left) || 0;
+          const topPct = parseFloat(src.top) || 0;
+          // JS now owns positioning. Drop the percentage layout anchors and
+          // let the transform string place the element. The original CSS rule
+          // on the anchor supplies "translate(-50%, -50%)" centering — we
+          // include that in the transform string below.
+          el.style.left = "0";
+          el.style.top = "0";
+          el.style.willChange = "transform";
+          return {
+            x: (leftPct / 100) * w,
+            y: (topPct / 100) * h,
+            rot: 0,
+            el,
+          };
+        });
+      };
+      seed(geoBoxRef, geoStateRef, geoMarkers);
+      seed(a11yBoxRef, a11yStateRef, a11yFloaters);
+    };
+
+    // Per-frame: drift with wind + sway, scatter from cursor, write transform.
+    // Called from the same RAF loop that updates the canvas particles so all
+    // moving elements stay in sync.
+    const updateDomMarkers = (t: number, reduced: boolean) => {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const wx = windRef.current * 0.45; // slower than canvas particles
+      const sway = Math.sin(t * 0.0003) * 0.18;
+      const mouse = mouseRef.current;
+
+      const tick = (
+        store: DomMarkerState[],
+        repulseRadius: number,
+        forceMul: number,
+      ) => {
+        const repulseRadiusSq = repulseRadius * repulseRadius;
+        for (let i = 0; i < store.length; i++) {
+          const m = store[i];
+          if (!reduced) {
+            m.x += wx;
+            m.y += sway;
+          }
+
+          if (mouse) {
+            const dx = m.x - mouse.x;
+            const dy = m.y - mouse.y;
+            const distSq = dx * dx + dy * dy;
+            if (distSq < repulseRadiusSq && distSq > 1) {
+              const dist = Math.sqrt(distSq);
+              const falloff = 1 - dist / repulseRadius;
+              const f = falloff * falloff * forceMul;
+              m.x += (dx / dist) * f;
+              m.y += (dy / dist) * f;
+              m.rot += f * 0.012;
+            }
+          }
+
+          if (m.x < -60) m.x = w + 60;
+          if (m.x > w + 60) m.x = -60;
+          if (m.y < -60) m.y = h + 60;
+          if (m.y > h + 60) m.y = -60;
+
+          // Compose: place element at (x, y) then center on its own box.
+          m.el.style.transform = `translate3d(${m.x}px, ${m.y}px, 0) translate(-50%, -50%) rotate(${m.rot}rad)`;
+        }
+      };
+
+      tick(
+        geoStateRef.current,
+        220,
+        intensity === "landing" ? 7 : 4.5,
+      );
+      tick(
+        a11yStateRef.current,
+        240,
+        intensity === "landing" ? 8 : 5,
+      );
+    };
+
     const drawWireShapes = (t: number, reduced: boolean) => {
       const w = window.innerWidth;
       const h = window.innerHeight;
@@ -202,9 +317,29 @@ export function ParticleBackground({
 
       if (!reduced && wx !== 0) {
         const sway = Math.sin(t * 0.00035) * 0.22;
+        const mouse = mouseRef.current;
+        const shapeRepulseRadius = 220;
+        const shapeRepulseRadiusSq =
+          shapeRepulseRadius * shapeRepulseRadius;
         shapes.forEach((sh) => {
           sh.x += wx;
           sh.y += sway;
+
+          if (mouse) {
+            const dx = sh.x - mouse.x;
+            const dy = sh.y - mouse.y;
+            const distSq = dx * dx + dy * dy;
+            if (distSq < shapeRepulseRadiusSq && distSq > 1) {
+              const dist = Math.sqrt(distSq);
+              const force =
+                (1 - dist / shapeRepulseRadius) *
+                (intensity === "landing" ? 5.5 : 3.5);
+              sh.x += (dx / dist) * force;
+              sh.y += (dy / dist) * force;
+              sh.rot += force * 0.005;
+            }
+          }
+
           if (sh.x < -100) sh.x = w + 100;
           if (sh.x > w + 100) sh.x = -100;
           if (sh.y < -80) sh.y = h + 80;
@@ -260,6 +395,7 @@ export function ParticleBackground({
       });
 
       drawWireShapes(performance.now(), true);
+      updateDomMarkers(performance.now(), true);
     };
 
     const drawParticles = () => {
@@ -313,9 +449,31 @@ export function ParticleBackground({
       });
 
       if (wx !== 0) {
+        const mouse = mouseRef.current;
+        const repulseRadius = intensity === "landing" ? 170 : 130;
+        const repulseRadiusSq = repulseRadius * repulseRadius;
+        const repulseStrength = intensity === "landing" ? 6.5 : 4.2;
         particles.forEach((particle) => {
           particle.x += wx;
           particle.y += sway * 0.08;
+
+          if (mouse) {
+            const dx = particle.x - mouse.x;
+            const dy = particle.y - mouse.y;
+            const distSq = dx * dx + dy * dy;
+            if (distSq < repulseRadiusSq && distSq > 0.25) {
+              const dist = Math.sqrt(distSq);
+              // Stronger near the cursor, fades to zero at the radius edge.
+              // Deeper particles (depth ~1) react more, foreground ones move
+              // less so the effect reads as parallax instead of a flat shove.
+              const falloff = 1 - dist / repulseRadius;
+              const force =
+                falloff * falloff * repulseStrength * (0.5 + particle.depth);
+              particle.x += (dx / dist) * force;
+              particle.y += (dy / dist) * force;
+            }
+          }
+
           if (particle.x < -12) particle.x = w + 12;
           if (particle.x > w + 12) particle.x = -12;
           if (particle.y < -12) particle.y = h + 12;
@@ -324,6 +482,7 @@ export function ParticleBackground({
       }
 
       drawWireShapes(t, false);
+      updateDomMarkers(t, false);
 
       animationRef.current = requestAnimationFrame(drawParticles);
     };
@@ -332,6 +491,7 @@ export function ParticleBackground({
       resizeCanvas();
       initParticles();
       initShapes();
+      initDomMarkers();
       if (prefersReducedMotion()) {
         cancelAnimationFrame(animationRef.current);
         drawStatic();
@@ -341,6 +501,7 @@ export function ParticleBackground({
     resizeCanvas();
     initParticles();
     initShapes();
+    initDomMarkers();
 
     if (prefersReducedMotion()) {
       drawStatic();
@@ -348,11 +509,31 @@ export function ParticleBackground({
       drawParticles();
     }
 
+    // Track the cursor so the canvas particles + wireframe shapes can scatter
+    // away from it. Disabled when the user prefers reduced motion.
+    const reducedMotion = prefersReducedMotion();
+    const onPointerMove = (event: PointerEvent) => {
+      mouseRef.current = { x: event.clientX, y: event.clientY };
+    };
+    const onPointerLeave = () => {
+      mouseRef.current = null;
+    };
+    if (!reducedMotion) {
+      window.addEventListener("pointermove", onPointerMove, { passive: true });
+      window.addEventListener("pointerdown", onPointerMove, { passive: true });
+      document.addEventListener("pointerleave", onPointerLeave);
+      window.addEventListener("blur", onPointerLeave);
+    }
+
     window.addEventListener("resize", onResize);
 
     return () => {
       cancelAnimationFrame(animationRef.current);
       window.removeEventListener("resize", onResize);
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerdown", onPointerMove);
+      document.removeEventListener("pointerleave", onPointerLeave);
+      window.removeEventListener("blur", onPointerLeave);
     };
   }, [intensity]);
 
@@ -384,7 +565,7 @@ export function ParticleBackground({
       </div>
 
       <div className="particle-bg-sync-flow absolute inset-0">
-        <div className="particle-bg-geometry absolute inset-0">
+        <div ref={geoBoxRef} className="particle-bg-geometry absolute inset-0">
           {geoMarkers.map((p, i) => (
             <span
               key={i}
@@ -427,7 +608,10 @@ export function ParticleBackground({
           ))}
         </div>
 
-        <div className="particle-bg-a11y-icons absolute inset-0 overflow-hidden">
+        <div
+          ref={a11yBoxRef}
+          className="particle-bg-a11y-icons absolute inset-0 overflow-hidden"
+        >
           {a11yFloaters.map(({ Glyph, left, top, delay, duration, scale }, i) => (
             <span
               key={`a11y-${i}`}
