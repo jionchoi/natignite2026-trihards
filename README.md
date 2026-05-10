@@ -11,20 +11,54 @@
   <img src="readme-assets/procedural-scene.png" alt="Procedural 3D scene view — low-poly room with disability-aware agents walking around" width="49%" />
 </p>
 
-Accessify is a single-page web app that turns one photograph of a built space — a cafe, restroom, lobby, retail floor — into an interactive 3D scene populated with disability-aware agents who walk around and report the barriers they hit. The whole pipeline is driven by Gemini 2.5 Flash and a browser-side depth model; there is no cloud render farm and no proprietary 3D format.
+Accessify is a single-page web app that turns one photograph of a built space into an interactive 3D scene populated with disability-aware agents who walk around and report the barriers they hit. The whole pipeline is driven by Gemini 2.5 Flash and a browser-side depth model; there is no cloud render farm and no proprietary 3D format.
 
 This was built for the Natignite 2026 hackathon by team `trihards`. The project name in the UI is **Accessify**.
 
 ---
 
+## How to run
+
+**Requirements:** Node.js 18.18+ (or 20+), npm, and a [Google AI Studio API key](https://aistudio.google.com/apikey) for Gemini 2.5 Flash. A WebGPU-capable browser (Chrome 113+, Edge 113+) is recommended so the depth model runs on the GPU.
+
+```bash
+# 1. Install dependencies
+npm install
+
+# 2. Add a .env.local file at the project root (Next.js loads it automatically)
+cp .env.local.example .env.local
+# On Windows PowerShell: Copy-Item .env.local.example .env.local
+
+# 3. Put your Gemini key in .env.local (same file the API routes read)
+# Open .env.local and set GOOGLE_API_KEY=... (get a key at https://aistudio.google.com/apikey)
+
+# 4. Start the dev server
+npm run dev
+
+# 5. Open the app
+# http://localhost:3000
+```
+
+Production build:
+
+```bash
+npm run build
+npm start
+```
+
+That's it — drop a photo of any built space onto the home page and the full pipeline (depth → Gemini analysis → procedural 3D scene → agent simulation) runs end to end. See [Quick start](#quick-start) and [Environment variables](#environment-variables) below for more detail.
+
+---
+
 ## Table of Contents
 
-1. [What it does](#what-it-does)
-2. [Pipeline overview](#pipeline-overview)
-3. [Tech stack](#tech-stack)
-4. [Quick start](#quick-start)
-5. [Project structure](#project-structure)
-6. [How it works, feature by feature](#how-it-works-feature-by-feature)
+1. [How to run](#how-to-run)
+2. [What it does](#what-it-does)
+3. [Pipeline overview](#pipeline-overview)
+4. [Tech stack](#tech-stack)
+5. [Quick start](#quick-start)
+6. [Project structure](#project-structure)
+7. [How it works, feature by feature](#how-it-works-feature-by-feature)
    - [Upload and context capture](#1-upload-and-context-capture)
    - [Depth estimation](#2-depth-estimation-in-browser)
    - [Gemini accessibility analysis](#3-gemini-accessibility-analysis)
@@ -35,11 +69,11 @@ This was built for the Natignite 2026 hackathon by team `trihards`. The project 
    - [Online GLB props](#8-online-glb-props-suggest--place)
    - [Agent simulation](#9-agent-simulation)
    - [Live encounters log](#10-live-encounters-log)
-7. [API reference](#api-reference)
-8. [Data model](#data-model)
-9. [Coordinate systems](#coordinate-systems)
-10. [Environment variables](#environment-variables)
-11. [Limitations and trade-offs](#limitations-and-trade-offs)
+8. [API reference](#api-reference)
+9. [Data model](#data-model)
+10. [Coordinate systems](#coordinate-systems)
+11. [Environment variables](#environment-variables)
+12. [Limitations and trade-offs](#limitations-and-trade-offs)
 
 ---
 
@@ -549,3 +583,13 @@ A template is committed at `.env.local.example`. Copy it to `.env.local` before 
 - Hugging Face `onnx-community/depth-anything-v2-small` for in-browser depth.
 - Khronos sample model registry for the curated GLB props.
 - Pmndrs (`@react-three/fiber`, `@react-three/drei`) for making React + three.js feel native.
+
+---
+
+## Contributors
+
+- Megh Mistry
+- Jion Choi
+- Eli Cuala
+- Kulgagan Bajwa
+- Mohammad Naqvi
