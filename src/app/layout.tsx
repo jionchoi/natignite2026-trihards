@@ -1,5 +1,6 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { JetBrains_Mono, Outfit, Plus_Jakarta_Sans } from "next/font/google";
+import { AppChrome } from "@/components/app-chrome";
 import "./globals.css";
 
 const sans = Plus_Jakarta_Sans({
@@ -23,6 +24,10 @@ export const metadata: Metadata = {
     "Upload a photo of a space and receive AI-powered accessibility feedback with an interactive 3D view.",
 };
 
+export const viewport: Viewport = {
+  themeColor: "#0a0b0e",
+};
+
 export default function RootLayout({
   children,
 }: {
@@ -33,7 +38,7 @@ export default function RootLayout({
       <body
         className={`${sans.variable} ${displaySans.variable} ${monoFont.variable} font-sans antialiased`}
       >
-        {children}
+        <AppChrome>{children}</AppChrome>
       </body>
     </html>
   );

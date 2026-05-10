@@ -12,10 +12,10 @@ const INITIAL_POLAR = Math.acos(2 / Math.sqrt(4*4 + 2*2 + 4*4)) // polar angle
 const INITIAL_DISTANCE = Math.sqrt(4*4 + 2*2 + 4*4)
 
 export function Room() {
-  const wallColor = "#2a3a42"
-  const floorColor = "#1f2d33"
-  const accentColor = "#1D9E75"
-  const frameColor = "#3d4f58"
+  const wallColor = "#1c1d24"
+  const floorColor = "#13141a"
+  const accentColor = "#f2f3f5"
+  const frameColor = "#3d404a"
 
   return (
     <group scale={0.8}>
@@ -180,7 +180,7 @@ export function FloatingRoom() {
       <div 
         className="absolute inset-0 flex items-center justify-center pointer-events-none"
         style={{
-          background: "radial-gradient(ellipse 60% 50% at 50% 50%, rgba(29, 158, 117, 0.15) 0%, transparent 70%)"
+          background: "radial-gradient(ellipse 60% 50% at 50% 50%, rgba(255, 255, 255, 0.08) 0%, transparent 70%)"
         }}
       />
       <Canvas
@@ -190,7 +190,7 @@ export function FloatingRoom() {
       >
         <ambientLight intensity={0.4} />
         <directionalLight position={[5, 5, 5]} intensity={0.8} castShadow />
-        <directionalLight position={[-3, 3, -3]} intensity={0.3} color="#1D9E75" />
+        <directionalLight position={[-3, 3, -3]} intensity={0.3} color="#cfd5dc" />
         <pointLight position={[0, 2, 0]} intensity={0.5} color="#ffffff" />
         
         <Float speed={1.5} rotationIntensity={0.2} floatIntensity={0.5}>

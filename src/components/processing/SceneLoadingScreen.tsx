@@ -5,6 +5,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Environment } from "@react-three/drei";
 import * as THREE from "three";
 import { Room } from "@frontend/components/floating-room";
+import { ParticleBackground } from "@/components/particle-background";
 
 interface PhotographerCfg {
   id: number;
@@ -74,8 +75,8 @@ function Photographer({ cfg, flash }: { cfg: PhotographerCfg; flash: boolean }) 
       <mesh position={[0, 1.64, 0.566]} rotation={[Math.PI / 2, 0, 0]}>
         <cylinderGeometry args={[0.039, 0.039, 0.006, 20]} />
         <meshStandardMaterial
-          color="#1a3a88"
-          roughness={0}
+          color="#2a2c34"
+          roughness={0.05}
           metalness={1}
           transparent
           opacity={0.9}
@@ -205,16 +206,17 @@ export function SceneLoadingScreen({
 
   return (
     <div
-      className={`fixed inset-0 z-50 ${className ?? ""}`}
+      className={`fixed inset-0 z-50 overflow-hidden ${className ?? ""}`}
       aria-live="polite"
       aria-label="Analyzing your space"
     >
-      <div className="absolute inset-0 bg-background" />
+      {/* Same halftone backdrop as the /start (upload) page */}
+      <ParticleBackground intensity="landing" />
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
           background:
-            "radial-gradient(ellipse at center, transparent 22%, rgba(0,0,0,0.82) 100%)",
+            "radial-gradient(ellipse at center, transparent 28%, rgba(10,11,14,0.78) 100%)",
         }}
       />
 
@@ -229,7 +231,7 @@ export function SceneLoadingScreen({
           <directionalLight
             position={[-3, 3, -3]}
             intensity={0.28}
-            color="#1D9E75"
+            color="#cfd5dc"
           />
           <pointLight position={[0, 2, 0]} intensity={0.38} />
           <Room />

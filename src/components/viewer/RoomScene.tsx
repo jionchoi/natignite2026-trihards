@@ -99,9 +99,12 @@ export function RoomScene({
         </mesh>
       </SceneHoverChrome>
 
+      {/* Grid follows the building footprint so the room reads as centered
+          on the "map" regardless of what world-space coords the AI layout
+          chose for the floor polygon. */}
       <gridHelper
         args={[40, 40, "#3a4750", "#1d262c"]}
-        position={[0, 0.002, 0]}
+        position={[floorBox.cx, 0.002, floorBox.cz]}
       />
 
       {layout.walls.map((wall, idx) => (

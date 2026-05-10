@@ -64,7 +64,7 @@ export function ContextForm({ value, onChange }: ContextFormProps) {
       >
         <Textarea
           id="notes"
-          placeholder="e.g. We host monthly events with up to 80 guests."
+          placeholder="e.g. we host monthly events with up to 80 guests."
           value={value.notes}
           onChange={(e) => onChange({ ...value, notes: e.target.value })}
         />

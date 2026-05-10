@@ -1,8 +1,9 @@
 "use client";
 
-import { Suspense, useRef, useState } from "react";
+import { Suspense, useRef, useState, type MutableRefObject } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
+import type * as THREE from "three";
 import { DepthMesh } from "./DepthMesh";
 import { LightingRig } from "./LightingRig";
 import { MeshPins } from "./MeshPins";
@@ -16,6 +17,7 @@ interface MeshViewerProps {
   issues?: Issue[];
   selectedIssueId?: string | null;
   onSelectIssue?: (id: string | null) => void;
+  meshRef?: MutableRefObject<THREE.Mesh | null>;
   className?: string;
 }
 
@@ -25,6 +27,7 @@ export function MeshViewer({
   issues = [],
   selectedIssueId = null,
   onSelectIssue,
+  meshRef,
   className,
 }: MeshViewerProps) {
   const controlsRef = useRef<any>(null);
@@ -57,6 +60,7 @@ export function MeshViewer({
                 depthUrl={depthUrl}
                 wireframe={wireframe}
                 displacement={displacement}
+                meshRef={meshRef}
               />
               {pinnedIssues.length > 0 ? (
                 <MeshPins

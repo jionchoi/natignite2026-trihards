@@ -7,7 +7,7 @@ import type { SceneSuggestionItem } from "@/lib/sceneSuggestions";
 import { SCENE_ROOM_SCALE } from "@/lib/sceneScale";
 import { SceneHoverChrome } from "./SceneObjectHover";
 
-const ACCENT = "#1D9E75";
+const ACCENT = "#f2f3f5";
 
 function OnlineModelMesh({ item }: { item: SceneSuggestionItem }) {
   const { scene } = useGLTF(item.glbUrl);

@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   Box,
@@ -16,6 +16,8 @@ import {
   Wand2,
   X,
 } from "lucide-react";
+import type * as THREE from "three";
+import { ImportExportButton } from "@/components/io";
 import { useSession } from "@/lib/store";
 import {
   SimulationReports,
@@ -40,6 +42,7 @@ export function SceneView() {
   const session = useSession();
   const layout = session.analysis?.roomLayout ?? null;
   const issues = session.analysis?.issues ?? [];
+  const sceneRef = useRef<THREE.Scene | null>(null);
 
   const [simRunning, setSimRunning] = useState(false);
   const [reports, setReports] = useState<ReportLogEntry[]>([]);
@@ -204,7 +207,7 @@ export function SceneView() {
     });
   };
 
-  if (!session.imageDataUrl || !session.analysis) {
+  if (!session.analysis) {
     return (
       <div className="frosted-glass rounded-2xl p-8 text-center animate-slide-in-up">
         <h2 className="text-lg font-semibold text-foreground">
@@ -228,7 +231,7 @@ export function SceneView() {
 
   return (
     <div className="space-y-4 animate-slide-in-up">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
+      <div className="relative z-30 flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-xl font-semibold text-foreground">
             Procedural scene
@@ -316,13 +319,19 @@ export function SceneView() {
               </button>
             </>
           ) : null}
-          <Link
-            href={`/analyze/${session.id}`}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-border bg-secondary/40 px-4 text-sm font-medium text-foreground transition-colors hover:border-border-strong hover:bg-secondary/60"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to photo view
-          </Link>
+          {session.imageDataUrl ? (
+            <Link
+              href={`/analyze/${session.id}`}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-border bg-secondary/40 px-4 text-sm font-medium text-foreground transition-colors hover:border-border-strong hover:bg-secondary/60"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to photo view
+            </Link>
+          ) : null}
+          <ImportExportButton
+            sceneRef={sceneRef}
+            analysisReady={!!session.analysis}
+          />
         </div>
       </div>
 
@@ -356,6 +365,7 @@ export function SceneView() {
             onReport={handleReport}
             onlinePlacements={onlinePlacements}
             extraFixtures={extraFixtures}
+            sceneRef={sceneRef}
             className="h-[70vh] min-h-[480px] w-full"
           />
           <form
@@ -399,7 +409,7 @@ export function SceneView() {
                 type="text"
                 value={editPrompt}
                 onChange={(e) => setEditPrompt(e.target.value)}
-                placeholder="Describe a change to make…"
+                placeholder="describe a change to make…"
                 disabled={editLoading}
                 className="h-10 flex-1 rounded-lg border border-border bg-bg-elevated/70 px-3 text-sm text-foreground placeholder:text-fg-subtle focus:border-border-strong focus:outline-none disabled:opacity-60"
               />
