@@ -77,15 +77,13 @@ That's it. See [Quick start](#quick-start) and [Environment variables](#environm
 
 ## What it does
 
-You drop in a photo. Within seconds the app shows you:
+You drop in a photo, and within seconds the app shows you:
 
 1. A **prioritized list of accessibility issues** (severity + category + recommendation + standards reference where relevant), each tied to a specific fixture in the scene where applicable.
-2. A **procedural 3D reconstruction** of the room — walls, floor, fixtures (toilet, sink, ramp, step, counter, signage, column, seating, door, grab bar, obstacle) — built from a JSON layout the model emits alongside the issue list.
+2. A **procedural 3D reconstruction** of the room with walls, floor, fixtures (toilet, sink, ramp, step, counter, signage, column, seating, door, grab bar, obstacle), which is built from a JSON layout the model emits alongside the issue list.
 3. A **simulation** where ambulatory, wheelchair, and blind/cane users walk around the room and report the barriers each persona actually trips over.
 4. A **natural-language editor** so you can type *"put a ramp right in front of the seating"* and watch the scene update in real time.
-5. A **drag-and-drop layout** — every fixture can be slid along the floor and rotated, and the agent simulation re-paths around the new positions immediately.
-
-It is advisory. The disclaimer on the home page says it: results should be verified by a certified accessibility consultant.
+5. A **drag-and-drop layout** where every fixture can be slid along the floor and rotated, and the agent simulation re-paths around the new positions immediately.
 
 ---
 
@@ -238,7 +236,7 @@ styles/                           Global CSS
 2. Stores the image, dimensions, and context in the Zustand session store (`src/lib/store.ts`, `useSession`).
 3. Navigates to `/analyze/[id]`.
 
-The session store is the single source of truth for everything downstream: image, depth map, analysis, and stage transitions. It does not persist to disk — refreshing loses state, which is intentional for a hackathon demo.
+The session store is the single source of truth for everything downstream: image, depth map, analysis, and stage transitions. It does not persist to disk, meaning that refreshing loses state, which is intentional for a hackathon demo.
 
 ### 2. Depth estimation (in-browser)
 
@@ -248,7 +246,7 @@ The session store is the single source of truth for everything downstream: image
 - Tries WebGPU (`fp32`) first; falls back to CPU.
 - Returns a depth map as a data URL plus its dimensions.
 
-The depth map is currently used by the **2D mesh preview** on `/analyze/[id]` (`MeshViewer` + `DepthMesh`) and shown as a stage indicator. The 3D procedural scene on `/analyze/[id]/scene` does *not* use the depth map directly — it uses the JSON `roomLayout` Gemini produces. Depth is kept in the pipeline because it is the more visceral artifact for users to see during the loading state and for the `/analyze` route's own preview.
+The depth map is currently used by the **2D mesh preview** on `/analyze/[id]` (`MeshViewer` + `DepthMesh`) and shown as a stage indicator. The 3D procedural scene on `/analyze/[id]/scene` does *not* use the depth map directly, it uses the JSON `roomLayout` Gemini produces. Depth is kept in the pipeline because it is the more visceral artifact for users to see during the loading state and for the `/analyze` route's own preview.
 
 ### 3. Gemini accessibility analysis
 
@@ -260,9 +258,9 @@ The depth map is currently used by the **2D mesh preview** on `/analyze/[id]` (`
 
 It strips the `data:` prefix to base64 (`dataUrlToBase64`), wraps it in a multimodal Gemini request, and uses:
 
-- The system prompt at `src/lib/prompts.ts` — a long accessibility rubric covering categories (mobility, sensory, wayfinding, lighting, signage, communication), severities (critical → info), the room layout schema (floor polygon, walls, fixtures), and instructions to emit a single JSON object.
+- The system prompt at `src/lib/prompts.ts`: a long accessibility rubric covering categories (mobility, sensory, wayfinding, lighting, signage, communication), severities (critical → info), the room layout schema (floor polygon, walls, fixtures), and instructions to emit a single JSON object.
 - The user prompt — the space type, any user notes, and the image.
-- `parseGeminiJson()` — a tolerant parser that strips markdown fences, trailing commas, and smart quotes before falling back to balanced-brace extraction. Models lie about producing valid JSON; this normalizer is what makes the round-trip reliable.
+- `parseGeminiJson()`: a tolerant parser that strips markdown fences, trailing commas, and smart quotes before falling back to balanced-brace extraction. Models lie about producing valid JSON; this normalizer is what makes the round-trip reliable.
 
 The validated response is shaped by `AnalysisSchema` (`src/lib/schemas.ts`):
 
@@ -281,14 +279,14 @@ Each issue is enriched with a generated id and an optional `relatedFixtureId` so
 
 `/analyze/[id]/scene` is the 3D experience. It renders `SceneViewer` (`src/components/viewer/SceneViewer.tsx`) which:
 
-1. **Scales the layout** — `SCENE_ROOM_SCALE = 1.5` (`src/lib/sceneScale.ts`) multiplies the floor polygon and wall start/end positions so agents have walking room. Wall heights and fixture sizes are not scaled. Fixture xz positions are scaled to keep them inside the larger room.
-2. **Computes camera placement** from the bounding box of the scaled floor polygon — keeps the camera high enough that the whole room is in frame.
-3. **Builds collision data** — `obstacles` (hard blockers) and `walkables` (ramps, steps) — from the scaled fixtures, with per-persona rules. A step blocks wheelchair users only; a column uses a circular footprint; online GLB props are appended as box blockers.
+1. **Scales the layout**: `SCENE_ROOM_SCALE = 1.5` (`src/lib/sceneScale.ts`) multiplies the floor polygon and wall start/end positions so agents have walking room. Wall heights and fixture sizes are not scaled. Fixture xz positions are scaled to keep them inside the larger room.
+2. **Computes camera placement** from the bounding box of the scaled floor polygon, it keeps the camera high enough that the whole room is in frame.
+3. **Builds collision data**: `obstacles` (hard blockers) and `walkables` (ramps, steps) from the scaled fixtures, with per-persona rules. A step blocks wheelchair users only; a column uses a circular footprint; online GLB props are appended as box blockers.
 4. **Renders** a black-blue Canvas with one ambient + two directional + one hemisphere light, then mounts `<RoomScene>` and (optionally) `<OnlinePlacements>` and `<AgentSimulation>`.
 
 `RoomScene.tsx`:
 
-- **Floor**: A `boxGeometry` slab whose footprint is the bounding box of the walls + fixtures + floor polygon points, padded by `FLOOR_MARGIN = 0.4 m`. The slab is `FLOOR_THICKNESS = 0.18 m` thick and centered so its **top face sits at y = 0** (where walls and fixtures start). This deliberately ignores the polygon-shape Gemini emits because Gemini's floor polygon and wall coordinates often don't share an origin — building the floor from the actual building extents guarantees the slab is *under* the room.
+- **Floor**: A `boxGeometry` slab whose footprint is the bounding box of the walls + fixtures + floor polygon points, padded by `FLOOR_MARGIN = 0.4 m`. The slab is `FLOOR_THICKNESS = 0.18 m` thick and centered so its **top face sits at y = 0** (where walls and fixtures start). This deliberately ignores the polygon-shape Gemini emits because Gemini's floor polygon and wall coordinates often don't share an origin, thus building the floor from the actual building extents guarantees the slab is *under* the room.
 - **Walls**: For each wall in the layout, a thin `boxGeometry` (length × wall.height × 0.08) rotated to align with the wall direction.
 - **Fixtures**: One `<Fixture>` per layout fixture.
 
@@ -546,8 +544,8 @@ The Zod transforms are forgiving on input (lower-cases enum strings, swaps mispl
 
 Two coordinate spaces matter:
 
-1. **Real-meter coords** — what Gemini emits and what `Issue`/`Fixture`/`Wall`/`RoomLayout` use. Y is up. The xz plane is the floor. Fixtures use bbox-center for their `position`; floor-resting fixtures have `position[1] = size[1] / 2`.
-2. **Scaled scene coords** — what the 3D renderer uses internally. Floor polygon and wall xz are multiplied by `SCENE_ROOM_SCALE = 1.5` to give agents room to move; fixture xz is scaled in lockstep. Wall heights and fixture sizes are *not* scaled.
+1. **Real-meter coords**: what Gemini emits and what `Issue`/`Fixture`/`Wall`/`RoomLayout` use. Y is up. The xz plane is the floor. Fixtures use bbox-center for their `position`; floor-resting fixtures have `position[1] = size[1] / 2`.
+2. **Scaled scene coords**: what the 3D renderer uses internally. Floor polygon and wall xz are multiplied by `SCENE_ROOM_SCALE = 1.5` to give agents room to move; fixture xz is scaled in lockstep. Wall heights and fixture sizes are *not* scaled.
 
 The natural-language editor and the API both speak real-meter coords. Drag/rotate overrides are stored in scaled coords (the same space the cursor raycast lands in) keyed by fixture id.
 
@@ -565,7 +563,7 @@ A template is committed at `.env.local.example`. Copy it to `.env.local` before 
 
 ## Limitations and trade-offs
 
-- **Procedural geometry is hand-coded.** Only the 12 `FixtureType` values render with detailed meshes; anything else falls back to a plain box. If you ask the natural-language editor for *"a potted plant"*, Gemini will pick `other` and you'll get a box. For realistic props, use the **Suggest & place (online GLB)** button instead — it pulls real `.glb` files from the curated registry.
+- **Procedural geometry is hand-coded.** Only the 12 `FixtureType` values render with detailed meshes; anything else falls back to a plain box. If you ask the natural-language editor for *"a potted plant"*, Gemini will pick `other` and you'll get a box. For realistic props, use the **Suggest & place (online GLB)** button, instead it pulls real `.glb` files from the curated registry.
 - **No persistence.** The Zustand session is in-memory only; refreshing the tab loses your analysis. This is deliberate for a hackathon demo. To persist, swap the store for `zustand/middleware/persist` and serialize `imageDataUrl` cautiously (it can be MBs).
 - **Floor inference is an aabb, not the polygon.** Gemini's floor polygon often sits next to the walls instead of under them, so the procedural floor is a rectangle derived from wall + fixture extents, padded by 0.4 m. The polygon is still used for agent containment, not for rendering.
 - **The depth model is unused in the 3D scene.** It is computed and shown on the 2D mesh viewer, but the 3D procedural reconstruction reads `roomLayout` straight from Gemini. A future version could use the depth map to refine wall heights and fixture sizes.
