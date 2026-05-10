@@ -15,6 +15,8 @@ Accessify is a single-page web app that turns one photograph of a built space in
 
 This was built for the Natignite 2026 hackathon by team `trihards`. The project name in the UI is **Accessify**.
 
+**Here is a link to the pitch deck:** https://docs.google.com/presentation/d/1LpPUv-NTcuuCIaGv3a-xLzEZzl6fN4-yHhpkebS-eUc/edit?usp=sharing
+
 ---
 
 ## How to run
