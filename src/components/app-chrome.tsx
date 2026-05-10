@@ -4,15 +4,17 @@ import { usePathname } from "next/navigation";
 import { ParticleBackground } from "@/components/particle-background";
 
 /**
- * Single global backdrop: strongest on `/`, toned-down elsewhere while keeping the same system.
+ * Single global backdrop: full halftone density on the landing and the upload
+ * input flow so they feel like a single experience; toned-down on inner views
+ * (analyze, etc.) where dense decoration would compete with content.
  */
 export function AppChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isLanding = pathname === "/";
+  const heroRoute = pathname === "/" || pathname === "/start";
 
   return (
     <>
-      <ParticleBackground intensity={isLanding ? "landing" : "subtle"} />
+      <ParticleBackground intensity={heroRoute ? "landing" : "subtle"} />
       {children}
     </>
   );

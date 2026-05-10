@@ -231,7 +231,7 @@ export function SceneView() {
 
   return (
     <div className="space-y-4 animate-slide-in-up">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
+      <div className="relative z-30 flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-xl font-semibold text-foreground">
             Procedural scene
@@ -243,10 +243,6 @@ export function SceneView() {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <ImportExportButton
-            sceneRef={sceneRef}
-            analysisReady={!!session.analysis}
-          />
           {layout ? (
             <>
               <button
@@ -332,6 +328,10 @@ export function SceneView() {
               Back to photo view
             </Link>
           ) : null}
+          <ImportExportButton
+            sceneRef={sceneRef}
+            analysisReady={!!session.analysis}
+          />
         </div>
       </div>
 
@@ -409,7 +409,7 @@ export function SceneView() {
                 type="text"
                 value={editPrompt}
                 onChange={(e) => setEditPrompt(e.target.value)}
-                placeholder="Describe a change to make…"
+                placeholder="describe a change to make…"
                 disabled={editLoading}
                 className="h-10 flex-1 rounded-lg border border-border bg-bg-elevated/70 px-3 text-sm text-foreground placeholder:text-fg-subtle focus:border-border-strong focus:outline-none disabled:opacity-60"
               />

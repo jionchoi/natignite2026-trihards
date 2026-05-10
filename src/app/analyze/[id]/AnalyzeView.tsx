@@ -149,10 +149,13 @@ export function AnalyzeView() {
 
   return (
     <div className="space-y-4 animate-slide-in-up">
-      <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card/35 px-4 py-3 backdrop-blur sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-sm font-semibold text-foreground">
-            Accessibility analysis
+      <div className="relative z-30 flex flex-col gap-3 rounded-2xl border border-border/60 bg-card/35 px-4 py-3 backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-1">
+          <span className="font-mono text-[10px] uppercase tracking-[0.32em] text-fg-subtle">
+            current audit
+          </span>
+          <h1 className="halftone-title-sm font-serif text-2xl leading-none tracking-tight sm:text-[1.75rem]">
+            accessibility analysis
           </h1>
         </div>
         <ImportExportButton

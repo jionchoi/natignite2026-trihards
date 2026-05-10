@@ -291,7 +291,7 @@ export function SceneViewer({
           gl={{ antialias: true }}
         >
           <SceneCapture sceneRef={sceneRef} />
-          <color attach="background" args={["#161c23"]} />
+          <color attach="background" args={["#0a0b0e"]} />
           <ambientLight intensity={0.85} />
           <directionalLight
             position={[8, 12, 6]}

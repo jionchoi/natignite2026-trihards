@@ -50,13 +50,16 @@ export function AccessibilityReport({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-start justify-between gap-3 border-b border-border px-5 py-4">
-        <div>
-          <h2 className="text-base font-semibold text-fg">
-            Accessibility report
+      <div className="flex items-start justify-between gap-3 border-b border-border/60 px-5 py-4">
+        <div className="flex flex-col gap-1">
+          <span className="font-mono text-[9px] uppercase tracking-[0.32em] text-fg-subtle">
+            audit findings
+          </span>
+          <h2 className="halftone-title-sm font-serif text-xl leading-none tracking-tight">
+            accessibility report
           </h2>
           <p className="mt-0.5 text-xs text-fg-muted">
-            Pins mark each issue. Click to inspect.
+            pins mark each issue. click to inspect.
           </p>
         </div>
         <DownloadReportButton
