@@ -1,6 +1,15 @@
+<p align="center">
+  <img src="readme-assets/accessify-logo.png" alt="Accessify" width="520" />
+</p>
+
 # Accessify
 
 **Photo in. Walkable 3D accessibility audit out.**
+
+<p align="center">
+  <img src="readme-assets/accessibility-analysis.png" alt="Accessibility analysis view — labeled photo with severity-coded pins and an issue card" width="49%" />
+  <img src="readme-assets/procedural-scene.png" alt="Procedural 3D scene view — low-poly room with disability-aware agents walking around" width="49%" />
+</p>
 
 Accessify is a single-page web app that turns one photograph of a built space — a cafe, restroom, lobby, retail floor — into an interactive 3D scene populated with disability-aware agents who walk around and report the barriers they hit. The whole pipeline is driven by Gemini 2.5 Flash and a browser-side depth model; there is no cloud render farm and no proprietary 3D format.
 
