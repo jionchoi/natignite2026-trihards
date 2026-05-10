@@ -19,8 +19,6 @@ This was built for the Natignite 2026 hackathon by team `trihards`. The project 
 
 ## How to run
 
-**Requirements:** Node.js 18.18+ (or 20+), npm, and a [Google AI Studio API key](https://aistudio.google.com/apikey) for Gemini 2.5 Flash. A WebGPU-capable browser (Chrome 113+, Edge 113+) is recommended so the depth model runs on the GPU.
-
 ```bash
 # 1. Install dependencies
 npm install
@@ -46,7 +44,7 @@ npm run build
 npm start
 ```
 
-That's it — drop a photo of any built space onto the home page and the full pipeline (depth → Gemini analysis → procedural 3D scene → agent simulation) runs end to end. See [Quick start](#quick-start) and [Environment variables](#environment-variables) below for more detail.
+That's it. See [Quick start](#quick-start) and [Environment variables](#environment-variables) below for more detail.
 
 ---
 
