@@ -1,0 +1,1453 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>ArcDrone — Autonomous Arctic Surveillance</title>
+<meta name="description" content="ArcDrone deploys distributed drone swarms and autonomous ground rovers for persistent, low-cost Arctic surveillance." />
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%23000'/><path d='M50 18 L74 78 L62 78 L50 46 L38 78 L26 78 Z' fill='%23f5f7fa'/><path d='M50 36 L58 60 L42 60 Z' fill='%23000'/><path d='M14 70 Q50 50 86 70' stroke='%23f5f7fa' stroke-width='5' fill='none' stroke-linecap='round'/></svg>" />
+<link rel="apple-touch-icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%23000'/><path d='M50 18 L74 78 L62 78 L50 46 L38 78 L26 78 Z' fill='%23f5f7fa'/><path d='M50 36 L58 60 L42 60 Z' fill='%23000'/><path d='M14 70 Q50 50 86 70' stroke='%23f5f7fa' stroke-width='5' fill='none' stroke-linecap='round'/></svg>" />
+<meta name="theme-color" content="#000000" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&family=Orbitron:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#000;
+    --bg-2:#070809;
+    --ink:#f5f7fa;
+    --ink-dim:#8a8f99;
+    --ink-faint:#3a3e46;
+    --line:#1a1d22;
+    --line-2:#23272e;
+    --accent:#dfe5ee;       /* silver */
+    --accent-2:#5fb5ff;     /* ice blue */
+    --accent-3:#a8e1ff;     /* glow */
+    --danger:#ff6b6b;
+    --radius:14px;
+    --max:1240px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
+    font-family:'Space Grotesk',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;overflow-x:hidden}
+  html.booting,html.booting body{overflow:hidden;height:100%}
+  a{color:inherit;text-decoration:none}
+  ::selection{background:rgba(95,181,255,.3);color:#fff}
+
+  /* ---------- BOOT / PRELOADER ---------- */
+  #boot{
+    position:fixed;inset:0;z-index:200;background:#000;
+    display:grid;place-items:center;overflow:hidden;
+    transition:opacity .8s ease, visibility .8s ease;
+  }
+  #boot.gone{opacity:0;visibility:hidden;pointer-events:none}
+  /* radial wash that flares behind the logo as it builds */
+  #boot::before{
+    content:"";position:absolute;inset:0;
+    background:radial-gradient(600px 400px at 50% 50%,rgba(95,181,255,.0),rgba(0,0,0,0));
+    animation:bootFlare 2.6s ease-out forwards;
+  }
+  @keyframes bootFlare{
+    0%   {background:radial-gradient(200px 200px at 50% 50%,rgba(95,181,255,.0),rgba(0,0,0,0))}
+    40%  {background:radial-gradient(700px 500px at 50% 50%,rgba(95,181,255,.18),rgba(0,0,0,0))}
+    100% {background:radial-gradient(900px 700px at 50% 50%,rgba(95,181,255,.0),rgba(0,0,0,0))}
+  }
+  /* scan grid that fades in then out */
+  #boot::after{
+    content:"";position:absolute;inset:0;pointer-events:none;
+    background:
+      linear-gradient(rgba(95,181,255,.06) 1px,transparent 1px) 0 0/40px 40px,
+      linear-gradient(90deg,rgba(95,181,255,.06) 1px,transparent 1px) 0 0/40px 40px;
+    mask-image:radial-gradient(500px 400px at 50% 50%,#000,transparent 70%);
+    opacity:0;animation:bootGrid 2.6s ease forwards;
+  }
+  @keyframes bootGrid{
+    0%{opacity:0}30%{opacity:1}80%{opacity:.6}100%{opacity:0}
+  }
+  .boot-stage{
+    position:relative;display:flex;flex-direction:column;align-items:center;gap:24px;
+  }
+  .boot-logo{
+    width:min(640px,72vw);height:auto;display:block;
+    transform-origin:center center;
+    animation:bootScale 2.6s cubic-bezier(.5,0,.2,1) forwards;
+  }
+  @keyframes bootScale{
+    0%   {transform:scale(.6);opacity:0;filter:blur(20px)}
+    18%  {opacity:1;filter:blur(0)}
+    55%  {transform:scale(1.04);opacity:1}
+    78%  {transform:scale(1);opacity:1}
+    100% {transform:scale(.18) translateY(-44vh) translateX(-46vw);opacity:0}
+  }
+  /* SVG stroke draw */
+  .boot-logo .draw{
+    stroke-dasharray:1200;stroke-dashoffset:1200;
+    animation:bootDraw 1.6s cubic-bezier(.6,.1,.2,1) forwards;
+  }
+  .boot-logo .draw.d2{animation-delay:.15s}
+  .boot-logo .draw.d3{animation-delay:.3s}
+  @keyframes bootDraw{
+    0%{stroke-dashoffset:1200;fill-opacity:0}
+    70%{stroke-dashoffset:0;fill-opacity:0}
+    100%{stroke-dashoffset:0;fill-opacity:1}
+  }
+  .boot-logo .word{
+    opacity:0;transform:translateX(-12px);
+    animation:bootWord .8s cubic-bezier(.2,.7,.2,1) forwards;
+  }
+  .boot-logo .w1{animation-delay:.85s}
+  .boot-logo .w2{animation-delay:.95s}
+  .boot-logo .w3{animation-delay:1.05s}
+  .boot-logo .w4{animation-delay:1.15s}
+  .boot-logo .w5{animation-delay:1.25s}
+  .boot-logo .w6{animation-delay:1.35s}
+  .boot-logo .w7{animation-delay:1.45s}
+  .boot-logo .w8{animation-delay:1.55s}
+  @keyframes bootWord{
+    0%{opacity:0;transform:translateX(-12px) translateY(4px)}
+    100%{opacity:1;transform:none}
+  }
+  .boot-line{
+    width:min(640px,72vw);height:1px;background:linear-gradient(90deg,transparent,rgba(95,181,255,.6),transparent);
+    transform:scaleX(0);transform-origin:left;
+    animation:bootLine 1.4s ease forwards .4s;
+  }
+  @keyframes bootLine{
+    0%{transform:scaleX(0)}55%{transform:scaleX(1);transform-origin:left}
+    56%{transform-origin:right}100%{transform:scaleX(0);transform-origin:right}
+  }
+  .boot-status{
+    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.32em;
+    color:#5fb5ff;text-transform:uppercase;opacity:0;
+    animation:bootStatus 2.4s ease forwards .5s;
+    display:flex;gap:14px;align-items:center;
+  }
+  .boot-status .bs-dot{
+    width:6px;height:6px;border-radius:50%;background:#5fb5ff;
+    box-shadow:0 0 10px #5fb5ff;animation:pulse 1.2s infinite;
+  }
+  @keyframes bootStatus{
+    0%{opacity:0}20%{opacity:.9}80%{opacity:.9}100%{opacity:0}
+  }
+  .boot-status .bs-text::after{
+    content:"";display:inline-block;width:8px;animation:bootDots 1s steps(4,end) infinite;
+  }
+  @keyframes bootDots{
+    0%{content:""}25%{content:"."}50%{content:".."}75%{content:"..."}100%{content:""}
+  }
+  .boot-coords{
+    position:absolute;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.24em;
+    color:rgba(143,160,176,.5);opacity:0;animation:bootStatus 2.4s ease forwards .8s;
+  }
+  .boot-coords.tl{top:24px;left:24px}
+  .boot-coords.tr{top:24px;right:24px;text-align:right}
+  .boot-coords.bl{bottom:24px;left:24px}
+  .boot-coords.br{bottom:24px;right:24px;text-align:right}
+
+  /* Body fade-in after boot */
+  .stage-content{opacity:0;transition:opacity .9s ease .3s}
+  .stage-content.lit{opacity:1}
+
+  /* Reduce-motion: skip the cinematic boot */
+  @media (prefers-reduced-motion: reduce){
+    #boot,.boot-logo,.boot-logo .draw,.boot-logo .word,.boot-line,.boot-status{animation:none !important}
+    #boot{opacity:0;visibility:hidden;pointer-events:none}
+    .stage-content{opacity:1}
+  }
+
+  /* ---------- NAV ---------- */
+  .nav{
+    position:fixed;top:0;left:0;right:0;z-index:50;
+    backdrop-filter:blur(14px);
+    background:linear-gradient(180deg,rgba(0,0,0,.7),rgba(0,0,0,.2));
+    border-bottom:1px solid rgba(255,255,255,.04);
+    transition:padding .3s ease;
+  }
+  .nav-inner{
+    max-width:var(--max);margin:0 auto;padding:14px 28px;
+    display:flex;align-items:center;justify-content:space-between;gap:24px;
+  }
+  .brand{display:flex;align-items:center;gap:12px;
+    font-family:'Orbitron',sans-serif;letter-spacing:.22em;font-weight:500;font-size:14px}
+  .brand .b-arc{color:#ffffff}
+  .brand .b-drone{color:#8a8f99}
+  .brand .logo{width:34px;height:34px}
+  .nav-links{display:flex;gap:28px;font-size:13px;color:var(--ink-dim);letter-spacing:.08em;text-transform:uppercase}
+  .nav-links a{transition:color .2s}
+  .nav-links a:hover{color:var(--ink)}
+  .nav-cta{
+    font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+    padding:10px 18px;border:1px solid var(--line-2);border-radius:999px;
+    transition:all .2s; color:var(--ink);
+  }
+  .nav-cta:hover{border-color:var(--accent-2);box-shadow:0 0 30px rgba(95,181,255,.2);color:#fff}
+  @media (max-width:820px){.nav-links{display:none}}
+
+  /* ---------- HERO ---------- */
+  .hero{
+    position:relative;height:100vh;min-height:720px;overflow:hidden;
+    display:flex;align-items:center;
+    background:radial-gradient(1100px 600px at 70% 40%,rgba(95,181,255,.08),transparent 60%),
+               radial-gradient(800px 500px at 20% 80%,rgba(168,225,255,.04),transparent 60%),
+               #000;
+  }
+  #swarm{position:absolute;inset:0;z-index:1}
+  .hero-grid{position:absolute;inset:0;z-index:2;pointer-events:none;
+    background:
+      linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px) 0 0/56px 56px,
+      linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px) 0 0/56px 56px;
+    mask-image:radial-gradient(900px 600px at 50% 50%,#000,transparent 80%);
+  }
+  .hero-inner{
+    position:relative;z-index:3;max-width:var(--max);margin:0 auto;padding:0 28px;width:100%;
+  }
+  .eyebrow{
+    display:inline-flex;align-items:center;gap:10px;
+    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.3em;text-transform:uppercase;
+    color:var(--ink-dim);padding:8px 14px;border:1px solid var(--line-2);border-radius:999px;
+    background:rgba(255,255,255,.02);
+  }
+  .eyebrow .pulse{width:6px;height:6px;border-radius:50%;background:var(--accent-2);box-shadow:0 0 12px var(--accent-2);animation:pulse 1.8s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:.4;transform:scale(.85)}50%{opacity:1;transform:scale(1.15)}}
+  h1{
+    font-size:clamp(48px,7.5vw,108px);line-height:.95;font-weight:500;letter-spacing:-.03em;
+    margin:28px 0 24px;max-width:13ch;
+  }
+  h1 .grad{
+    background:linear-gradient(180deg,#fff 0%,#9aa3b1 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  h1 .italic{font-style:italic;font-weight:300;color:var(--accent-3)}
+  .lede{font-size:clamp(16px,1.4vw,20px);color:var(--ink-dim);max-width:54ch;line-height:1.55;margin:0 0 38px}
+  .cta-row{display:flex;gap:14px;flex-wrap:wrap}
+  .btn{
+    display:inline-flex;align-items:center;gap:10px;
+    padding:14px 24px;border-radius:999px;font-size:13px;letter-spacing:.12em;text-transform:uppercase;
+    transition:all .25s ease;cursor:pointer;border:1px solid transparent;
+  }
+  .btn-primary{background:#fff;color:#000}
+  .btn-primary:hover{transform:translateY(-2px);box-shadow:0 10px 40px rgba(255,255,255,.18)}
+  .btn-ghost{border-color:var(--line-2);color:var(--ink)}
+  .btn-ghost:hover{border-color:#fff;background:rgba(255,255,255,.04)}
+  .btn .arrow{transition:transform .2s}
+  .btn:hover .arrow{transform:translateX(4px)}
+
+  .hero-stats{
+    position:absolute;bottom:48px;left:0;right:0;z-index:3;
+    padding:0 28px;
+  }
+  .hero-stats-inner{
+    max-width:var(--max);margin:0 auto;
+    display:grid;grid-template-columns:repeat(4,1fr);gap:0;
+    border-top:1px solid var(--line);padding-top:24px;
+  }
+  .stat{padding:0 24px;border-left:1px solid var(--line)}
+  .stat:first-child{border-left:none;padding-left:0}
+  .stat-num{font-size:clamp(22px,2.4vw,32px);font-weight:500;letter-spacing:-.02em}
+  .stat-num .unit{color:var(--ink-dim);font-weight:300}
+  .stat-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.24em;text-transform:uppercase;color:var(--ink-dim);margin-top:6px}
+  @media (max-width:820px){
+    .hero-stats-inner{grid-template-columns:repeat(2,1fr);row-gap:18px}
+    .stat:nth-child(3){border-left:none;padding-left:0}
+    .hero-stats{bottom:24px}
+  }
+
+  .scroll-cue{
+    position:absolute;left:50%;bottom:140px;transform:translateX(-50%);z-index:3;
+    font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.3em;color:var(--ink-faint);
+    display:flex;flex-direction:column;align-items:center;gap:10px;
+  }
+  .scroll-cue .line{width:1px;height:32px;background:linear-gradient(180deg,var(--ink-faint),transparent);animation:scrollDown 2s ease-in-out infinite}
+  @keyframes scrollDown{0%{transform:scaleY(0);transform-origin:top}50%{transform:scaleY(1);transform-origin:top}51%{transform-origin:bottom}100%{transform:scaleY(0);transform-origin:bottom}}
+  @media (max-width:820px){.scroll-cue{display:none}}
+
+  /* ---------- SECTION SHARED ---------- */
+  section{position:relative;padding:140px 28px}
+  .container{max-width:var(--max);margin:0 auto}
+  .sec-eyebrow{
+    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.32em;text-transform:uppercase;color:var(--accent-2);
+    display:flex;align-items:center;gap:14px;margin-bottom:24px;
+  }
+  .sec-eyebrow::before{content:"";width:24px;height:1px;background:var(--accent-2)}
+  .sec-title{font-size:clamp(34px,4.5vw,60px);line-height:1.02;font-weight:500;letter-spacing:-.02em;margin:0 0 24px;max-width:18ch}
+  .sec-title .italic{font-style:italic;font-weight:300;color:var(--accent-3)}
+  .sec-lede{font-size:18px;color:var(--ink-dim);max-width:62ch;line-height:1.6;margin:0}
+
+  /* ---------- PROBLEM ---------- */
+  .problem{background:linear-gradient(180deg,#000,var(--bg-2) 50%,#000)}
+  .map-block{
+    margin-top:72px;display:grid;grid-template-columns:1.1fr .9fr;gap:60px;align-items:center;
+  }
+  @media (max-width:920px){.map-block{grid-template-columns:1fr}}
+  .arctic-map{
+    position:relative;aspect-ratio:1/1;border:1px solid var(--line-2);border-radius:var(--radius);
+    background:radial-gradient(circle at 50% 50%,#0c1118,#000 70%);overflow:hidden;
+  }
+  .arctic-map svg{width:100%;height:100%;display:block}
+  .map-coord{
+    position:absolute;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-faint);letter-spacing:.2em;
+  }
+  .map-coord.tl{top:14px;left:16px}
+  .map-coord.tr{top:14px;right:16px}
+  .map-coord.bl{bottom:14px;left:16px}
+  .map-coord.br{bottom:14px;right:16px}
+  .map-badge{
+    position:absolute;top:18px;left:50%;transform:translateX(-50%);
+    font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.28em;color:var(--ink-dim);
+    padding:6px 12px;border:1px solid var(--line-2);border-radius:999px;background:rgba(0,0,0,.5);
+  }
+  .gap-list{display:grid;gap:18px}
+  .gap-item{
+    padding:24px 26px;border:1px solid var(--line);border-radius:var(--radius);
+    background:rgba(255,255,255,.012);transition:all .25s;
+  }
+  .gap-item:hover{border-color:var(--line-2);background:rgba(255,255,255,.025);transform:translateX(4px)}
+  .gap-num{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent-2);letter-spacing:.22em}
+  .gap-title{font-size:18px;font-weight:500;margin:8px 0 6px}
+  .gap-desc{font-size:14px;color:var(--ink-dim);line-height:1.55;margin:0}
+
+  /* ---------- SYSTEM (LAYERS) ---------- */
+  .system{background:#000}
+  .layers{margin-top:80px;display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+  @media (max-width:920px){.layers{grid-template-columns:1fr}}
+  .layer{
+    position:relative;padding:32px;border:1px solid var(--line);border-radius:var(--radius);
+    background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,.005));
+    transition:all .35s cubic-bezier(.2,.6,.2,1);overflow:hidden;
+    min-height:480px;display:flex;flex-direction:column;
+  }
+  .layer:hover{border-color:var(--accent-2);transform:translateY(-4px);box-shadow:0 30px 60px -20px rgba(95,181,255,.15)}
+  .layer .glow{position:absolute;inset:-1px;border-radius:var(--radius);pointer-events:none;opacity:0;transition:opacity .3s;
+    background:radial-gradient(400px 200px at 50% 0%,rgba(95,181,255,.18),transparent 60%);}
+  .layer:hover .glow{opacity:1}
+  .layer-tag{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.32em;color:var(--accent-2);text-transform:uppercase}
+  .layer-name{font-size:28px;font-weight:500;letter-spacing:-.01em;margin:10px 0 4px}
+  .layer-sub{font-size:13px;color:var(--ink-dim);margin-bottom:24px}
+  .layer-visual{
+    flex:1;min-height:170px;margin:8px 0 22px;position:relative;
+    border:1px solid var(--line);border-radius:10px;overflow:hidden;
+    background:radial-gradient(circle at 50% 60%,#0a0e15,#000 75%);
+  }
+  .layer-specs{display:grid;gap:10px;font-size:13px}
+  .spec{display:flex;justify-content:space-between;gap:18px;padding:8px 0;border-bottom:1px dashed var(--line)}
+  .spec:last-child{border-bottom:none}
+  .spec .k{color:var(--ink-dim);font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase}
+  .spec .v{color:var(--ink);text-align:right}
+
+  /* ---------- HOW IT WORKS (interactive scene) ---------- */
+  .how{background:linear-gradient(180deg,#000,#070809);}
+  .scene-wrap{
+    margin-top:64px;border:1px solid var(--line-2);border-radius:var(--radius);overflow:hidden;
+    background:linear-gradient(180deg,#05080d,#000);
+    display:grid;grid-template-columns:1fr 320px;
+  }
+  @media (max-width:920px){.scene-wrap{grid-template-columns:1fr}}
+  #scene{position:relative;height:560px;background:radial-gradient(700px 400px at 50% 80%,rgba(95,181,255,.08),transparent 60%)}
+  #scene canvas{display:block;width:100%;height:100%}
+  .scene-side{
+    padding:28px;border-left:1px solid var(--line);
+    display:flex;flex-direction:column;gap:12px;
+  }
+  @media (max-width:920px){.scene-side{border-left:none;border-top:1px solid var(--line)}}
+  .scene-side h4{margin:0 0 6px;font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-dim);font-weight:500;font-family:'JetBrains Mono',monospace}
+  .toggle-row{display:flex;flex-direction:column;gap:8px}
+  .toggle{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:12px 14px;border:1px solid var(--line);border-radius:10px;
+    cursor:pointer;transition:all .2s;font-size:13px;
+  }
+  .toggle:hover{border-color:var(--line-2);background:rgba(255,255,255,.02)}
+  .toggle.active{border-color:var(--accent-2);background:rgba(95,181,255,.06);color:#fff}
+  .toggle .dot{width:8px;height:8px;border-radius:50%;background:var(--line-2);transition:all .2s}
+  .toggle.active .dot{background:var(--accent-2);box-shadow:0 0 12px var(--accent-2)}
+  .telemetry{
+    margin-top:auto;padding:14px;border:1px solid var(--line);border-radius:10px;
+    font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-dim);line-height:1.8;
+    background:rgba(0,0,0,.4);
+  }
+  .telemetry .live{color:var(--accent-2)}
+  .telemetry .val{color:var(--ink)}
+
+  /* ---------- USE CASES ---------- */
+  .cases{background:#000}
+  .cases-grid{margin-top:72px;display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  @media (max-width:920px){.cases-grid{grid-template-columns:1fr 1fr}}
+  @media (max-width:560px){.cases-grid{grid-template-columns:1fr}}
+  .case{
+    position:relative;padding:28px;border:1px solid var(--line);border-radius:var(--radius);
+    background:rgba(255,255,255,.012);overflow:hidden;transition:all .3s;cursor:default;
+  }
+  .case::after{content:"";position:absolute;inset:0;border-radius:var(--radius);pointer-events:none;
+    background:linear-gradient(135deg,rgba(95,181,255,.0),rgba(95,181,255,.0));transition:background .3s}
+  .case:hover{border-color:var(--line-2);transform:translateY(-3px)}
+  .case:hover::after{background:linear-gradient(135deg,rgba(95,181,255,.04),transparent 60%)}
+  .case-icon{width:36px;height:36px;display:grid;place-items:center;border:1px solid var(--line-2);border-radius:8px;color:var(--accent-2)}
+  .case-cat{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.26em;text-transform:uppercase;color:var(--ink-dim);margin:18px 0 8px}
+  .case-name{font-size:18px;font-weight:500;margin:0 0 8px}
+  .case-desc{font-size:13.5px;color:var(--ink-dim);line-height:1.55;margin:0}
+  .case.defense .case-cat{color:var(--danger);opacity:.85}
+  .case.commercial .case-cat{color:var(--accent-2)}
+
+  /* ---------- DIFF / COMPARE ---------- */
+  .diff{background:linear-gradient(180deg,#000,#06080b)}
+  .compare{margin-top:64px;display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media (max-width:780px){.compare{grid-template-columns:1fr}}
+  .col{padding:36px 32px;border:1px solid var(--line);border-radius:var(--radius);background:rgba(255,255,255,.01)}
+  .col.us{border-color:rgba(95,181,255,.4);background:linear-gradient(180deg,rgba(95,181,255,.05),rgba(0,0,0,0))}
+  .col-tag{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--ink-dim)}
+  .col.us .col-tag{color:var(--accent-2)}
+  .col h3{font-size:24px;font-weight:500;margin:10px 0 24px;letter-spacing:-.01em}
+  .col ul{margin:0;padding:0;list-style:none;display:grid;gap:14px}
+  .col li{display:flex;gap:14px;font-size:14.5px;color:var(--ink-dim);line-height:1.5}
+  .col li .mk{flex:0 0 auto;width:18px;height:18px;border-radius:50%;display:grid;place-items:center;font-size:11px;margin-top:2px}
+  .col.them li .mk{background:rgba(255,107,107,.12);color:var(--danger)}
+  .col.us li .mk{background:rgba(95,181,255,.12);color:var(--accent-2)}
+  .col.us li{color:var(--ink)}
+
+  /* ---------- CTA / FOOTER ---------- */
+  .endcta{
+    background:radial-gradient(700px 400px at 50% 0%,rgba(95,181,255,.08),transparent 70%),#000;
+    padding:160px 28px 60px;text-align:center;border-top:1px solid var(--line);
+  }
+  .endcta h2{font-size:clamp(40px,5vw,72px);font-weight:500;letter-spacing:-.02em;line-height:1;margin:0 auto 24px;max-width:14ch}
+  .endcta p{color:var(--ink-dim);max-width:50ch;margin:0 auto 36px;font-size:17px;line-height:1.6}
+  footer{
+    max-width:var(--max);margin:80px auto 0;padding:32px 0 0;border-top:1px solid var(--line);
+    display:flex;justify-content:space-between;flex-wrap:wrap;gap:18px;
+    font-family:'Space Grotesk',system-ui,sans-serif;font-size:13px;font-weight:400;
+    color:var(--ink-dim);letter-spacing:.01em;
+  }
+
+  /* ---------- REVEAL ---------- */
+  .reveal{opacity:0;transform:translateY(28px);transition:opacity .8s ease,transform .8s cubic-bezier(.2,.7,.2,1)}
+  .reveal.in{opacity:1;transform:none}
+
+  /* ---------- LAYER MINI VISUALS ---------- */
+  .lv-line{stroke:var(--ink-faint);stroke-width:.6;fill:none}
+  .lv-arc{stroke:var(--accent-2);stroke-width:1.2;fill:none;opacity:.7}
+  .lv-dot{fill:var(--accent-2)}
+  .lv-shadow{fill:rgba(95,181,255,.15)}
+
+</style>
+</head>
+<body>
+
+<!-- =================== BOOT / STARTUP =================== -->
+<div id="boot" aria-hidden="true">
+  <div class="boot-coords tl">SYS · ARCDRONE NETWORK<br/>NODE · YYZ-01</div>
+  <div class="boot-coords tr">68.42° N<br/>95.18° W</div>
+  <div class="boot-coords bl">BUILD 0.1.0<br/>SECURE LINK</div>
+  <div class="boot-coords br">UPLINK · NOMINAL<br/>HANDSHAKE OK</div>
+
+  <div class="boot-stage">
+    <!-- Full ArcDrone lockup: A-arc icon + ARCDRONE wordmark -->
+    <svg class="boot-logo" viewBox="0 0 900 220" fill="none" aria-label="ArcDrone">
+      <defs>
+        <linearGradient id="silver" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#ffffff"/>
+          <stop offset="100%" stop-color="#9aa3b1"/>
+        </linearGradient>
+        <linearGradient id="silverDim" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#9aa3b1"/>
+          <stop offset="100%" stop-color="#5a6270"/>
+        </linearGradient>
+      </defs>
+      <!-- A icon -->
+      <g transform="translate(40 30)">
+        <!-- triangular A body (drawn stroke, fills in at the end) -->
+        <path class="draw" d="M80 10 L150 175 L122 175 L80 75 L38 175 L10 175 Z"
+              fill="url(#silver)" stroke="#f5f7fa" stroke-width="2"
+              stroke-linejoin="round" stroke-linecap="round"/>
+        <!-- inner cut (kept dark) -->
+        <path d="M80 60 L102 130 L58 130 Z" fill="#000"/>
+        <!-- arc beneath -->
+        <path class="draw d2" d="M-15 150 Q80 100 175 150"
+              stroke="url(#silver)" stroke-width="6" fill="none" stroke-linecap="round"/>
+      </g>
+      <!-- Wordmark: ARCDRONE, letter by letter — ARC bright, DRONE dim -->
+      <g font-family="Orbitron, sans-serif" font-weight="500"
+         font-size="100" letter-spacing="12">
+        <text class="word w1" x="220" y="160" fill="url(#silver)">A</text>
+        <text class="word w2" x="305" y="160" fill="url(#silver)">R</text>
+        <text class="word w3" x="390" y="160" fill="url(#silver)">C</text>
+        <text class="word w4" x="485" y="160" fill="url(#silverDim)">D</text>
+        <text class="word w5" x="580" y="160" fill="url(#silverDim)">R</text>
+        <text class="word w6" x="670" y="160" fill="url(#silverDim)">O</text>
+        <text class="word w7" x="770" y="160" fill="url(#silverDim)">N</text>
+        <text class="word w8" x="860" y="160" fill="url(#silverDim)">E</text>
+      </g>
+    </svg>
+    <div class="boot-line"></div>
+    <div class="boot-status">
+      <span class="bs-dot"></span>
+      <span>Initializing surveillance mesh<span class="bs-text"></span></span>
+    </div>
+  </div>
+</div>
+
+<div class="stage-content">
+
+<!-- =================== NAV =================== -->
+<nav class="nav" id="nav">
+  <div class="nav-inner">
+    <a href="#" class="brand" aria-label="ArcDrone">
+      <svg class="logo" viewBox="0 0 100 100" fill="none" aria-hidden="true">
+        <!-- Triangular A -->
+        <path d="M50 18 L74 78 L62 78 L50 46 L38 78 L26 78 Z" fill="#f5f7fa"/>
+        <!-- inner cut -->
+        <path d="M50 36 L58 60 L42 60 Z" fill="#000"/>
+        <!-- arc -->
+        <path d="M14 70 Q50 50 86 70" stroke="#f5f7fa" stroke-width="3" fill="none" stroke-linecap="round"/>
+      </svg>
+      <span class="b-arc">ARC</span><span class="b-drone">DRONE</span>
+    </a>
+    <div class="nav-links">
+      <a href="#system">System</a>
+      <a href="#how">How it works</a>
+      <a href="#cases">Use cases</a>
+      <a href="#diff">Approach</a>
+    </div>
+    <a href="#contact" class="nav-cta">Request Brief</a>
+  </div>
+</nav>
+
+<!-- =================== HERO =================== -->
+<header class="hero">
+  <canvas id="swarm"></canvas>
+  <div class="hero-grid"></div>
+
+  <div class="hero-inner">
+    <span class="eyebrow"><span class="pulse"></span> Autonomous Arctic Surveillance · Canada</span>
+    <h1>
+      <span class="grad">A persistent eye</span><br/>
+      over the <span class="italic">North.</span>
+    </h1>
+    <p class="lede">
+      ArcDrone deploys distributed swarms of low-altitude drones paired with autonomous ground rovers to deliver
+      continuous, AI-driven surveillance across Canada&rsquo;s Arctic — at a fraction of the cost of legacy aerial assets.
+    </p>
+    <div class="cta-row">
+      <a href="#system" class="btn btn-primary">Explore the system <span class="arrow">→</span></a>
+      <a href="#contact" class="btn btn-ghost">For defence partners</a>
+    </div>
+  </div>
+
+  <div class="scroll-cue">
+    <span>SCROLL</span>
+    <span class="line"></span>
+  </div>
+
+  <div class="hero-stats">
+    <div class="hero-stats-inner">
+      <div class="stat">
+        <div class="stat-num">300–400<span class="unit"> ft</span></div>
+        <div class="stat-label">Cruise altitude</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">5–20<span class="unit"> /zone</span></div>
+        <div class="stat-label">Swarm density</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">24/7</div>
+        <div class="stat-label">Persistent watch</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">1<span class="unit">/10</span></div>
+        <div class="stat-label">Cost vs. legacy</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- =================== PROBLEM =================== -->
+<section id="problem" class="problem">
+  <div class="container">
+    <div class="reveal">
+      <div class="sec-eyebrow">01 · The gap</div>
+      <h2 class="sec-title">Four million square kilometres of <span class="italic">silence.</span></h2>
+      <p class="sec-lede">
+        Canada&rsquo;s Arctic remains the largest under-surveilled territory in the developed world. Satellite revisit times are
+        slow, manned patrols are expensive and sparse, and existing radar coverage misses anything low, small, or quiet.
+      </p>
+    </div>
+
+    <div class="map-block">
+      <div class="arctic-map reveal">
+        <span class="map-badge">SECTOR · ARCTIC NORTH</span>
+        <span class="map-coord tl">72°N · 110°W</span>
+        <span class="map-coord tr">72°N · 60°W</span>
+        <span class="map-coord bl">60°N · 110°W</span>
+        <span class="map-coord br">60°N · 60°W</span>
+        <svg viewBox="0 0 400 400" preserveAspectRatio="none">
+          <!-- grid -->
+          <g stroke="rgba(255,255,255,.05)" stroke-width=".5">
+            <path d="M0 80 H400 M0 160 H400 M0 240 H400 M0 320 H400"/>
+            <path d="M80 0 V400 M160 0 V400 M240 0 V400 M320 0 V400"/>
+          </g>
+          <!-- abstract coastline -->
+          <path d="M30 250 Q70 200 130 220 T230 180 Q280 160 330 200 T380 220" stroke="rgba(255,255,255,.15)" stroke-width="1.4" fill="none"/>
+          <path d="M40 290 Q120 270 200 280 T370 260" stroke="rgba(255,255,255,.07)" stroke-width="1" fill="none"/>
+          <!-- coverage zones -->
+          <circle cx="120" cy="160" r="34" fill="rgba(95,181,255,.07)" stroke="rgba(95,181,255,.5)" stroke-dasharray="3 4"/>
+          <circle cx="220" cy="120" r="30" fill="rgba(95,181,255,.07)" stroke="rgba(95,181,255,.5)" stroke-dasharray="3 4"/>
+          <circle cx="290" cy="190" r="38" fill="rgba(95,181,255,.07)" stroke="rgba(95,181,255,.5)" stroke-dasharray="3 4"/>
+          <circle cx="170" cy="240" r="28" fill="rgba(95,181,255,.07)" stroke="rgba(95,181,255,.5)" stroke-dasharray="3 4"/>
+          <!-- nodes -->
+          <g class="node">
+            <circle cx="120" cy="160" r="3" fill="#a8e1ff"/>
+            <circle cx="120" cy="160" r="8" fill="none" stroke="#a8e1ff" opacity=".6">
+              <animate attributeName="r" from="3" to="18" dur="2.4s" repeatCount="indefinite"/>
+              <animate attributeName="opacity" from=".6" to="0" dur="2.4s" repeatCount="indefinite"/>
+            </circle>
+          </g>
+          <g><circle cx="220" cy="120" r="3" fill="#a8e1ff"/>
+            <circle cx="220" cy="120" r="8" fill="none" stroke="#a8e1ff" opacity=".6">
+              <animate attributeName="r" from="3" to="18" dur="2.4s" begin=".6s" repeatCount="indefinite"/>
+              <animate attributeName="opacity" from=".6" to="0" dur="2.4s" begin=".6s" repeatCount="indefinite"/>
+            </circle></g>
+          <g><circle cx="290" cy="190" r="3" fill="#a8e1ff"/>
+            <circle cx="290" cy="190" r="8" fill="none" stroke="#a8e1ff" opacity=".6">
+              <animate attributeName="r" from="3" to="18" dur="2.4s" begin="1.2s" repeatCount="indefinite"/>
+              <animate attributeName="opacity" from=".6" to="0" dur="2.4s" begin="1.2s" repeatCount="indefinite"/>
+            </circle></g>
+          <g><circle cx="170" cy="240" r="3" fill="#a8e1ff"/>
+            <circle cx="170" cy="240" r="8" fill="none" stroke="#a8e1ff" opacity=".6">
+              <animate attributeName="r" from="3" to="18" dur="2.4s" begin="1.8s" repeatCount="indefinite"/>
+              <animate attributeName="opacity" from=".6" to="0" dur="2.4s" begin="1.8s" repeatCount="indefinite"/>
+            </circle></g>
+          <!-- mesh links -->
+          <g stroke="rgba(95,181,255,.3)" stroke-width=".6" fill="none">
+            <line x1="120" y1="160" x2="220" y2="120"/>
+            <line x1="220" y1="120" x2="290" y2="190"/>
+            <line x1="290" y1="190" x2="170" y2="240"/>
+            <line x1="170" y1="240" x2="120" y2="160"/>
+            <line x1="120" y1="160" x2="290" y2="190" stroke-dasharray="2 4"/>
+          </g>
+        </svg>
+      </div>
+
+      <div class="gap-list">
+        <div class="gap-item reveal">
+          <div class="gap-num">01</div>
+          <div class="gap-title">Persistent coverage doesn&rsquo;t exist</div>
+          <p class="gap-desc">Satellites pass overhead in minutes. Manned aircraft fly for hours, not days. Nothing watches continuously.</p>
+        </div>
+        <div class="gap-item reveal">
+          <div class="gap-num">02</div>
+          <div class="gap-title">Low, slow, small targets slip through</div>
+          <p class="gap-desc">Long-range radar misses small vessels, low-altitude aircraft, and ground intrusions. The threats that matter are exactly the ones unseen.</p>
+        </div>
+        <div class="gap-item reveal">
+          <div class="gap-num">03</div>
+          <div class="gap-title">Legacy platforms cost too much to scale</div>
+          <p class="gap-desc">A single MQ-style asset costs more than a fleet of distributed nodes. You can&rsquo;t saturate four million km² with platforms that expensive.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =================== SYSTEM =================== -->
+<section id="system" class="system">
+  <div class="container">
+    <div class="reveal">
+      <div class="sec-eyebrow">02 · Architecture</div>
+      <h2 class="sec-title">Three layers, <span class="italic">one network.</span></h2>
+      <p class="sec-lede">
+        Cheap aerial nodes, rugged ground anchors, and on-device intelligence — coordinated as a single resilient mesh.
+        Lose a node, the swarm reroutes. Add a node, the network scales.
+      </p>
+    </div>
+
+    <div class="layers">
+      <div class="layer reveal">
+        <div class="glow"></div>
+        <div class="layer-tag">Layer 01 / Aerial</div>
+        <h3 class="layer-name">Drone Swarm</h3>
+        <div class="layer-sub">Distributed FPV-class aerial nodes</div>
+        <div class="layer-visual">
+          <svg viewBox="0 0 300 170" width="100%" height="100%">
+            <line class="lv-line" x1="0" y1="140" x2="300" y2="140"/>
+            <line class="lv-line" x1="0" y1="40" x2="300" y2="40" stroke-dasharray="2 6"/>
+            <text x="6" y="36" font-family="JetBrains Mono" font-size="8" fill="#5fb5ff" opacity=".8">400 FT</text>
+            <text x="6" y="156" font-family="JetBrains Mono" font-size="8" fill="#3a3e46">GROUND</text>
+            <!-- drones -->
+            <g>
+              <circle class="lv-dot" cx="50" cy="55" r="2.5"/>
+              <circle class="lv-dot" cx="95" cy="48" r="2.5"/>
+              <circle class="lv-dot" cx="140" cy="60" r="2.5"/>
+              <circle class="lv-dot" cx="185" cy="50" r="2.5"/>
+              <circle class="lv-dot" cx="230" cy="58" r="2.5"/>
+              <circle class="lv-dot" cx="270" cy="52" r="2.5"/>
+              <!-- cones -->
+              <path d="M50 55 L20 140 L80 140 Z" class="lv-shadow"/>
+              <path d="M140 60 L110 140 L170 140 Z" class="lv-shadow"/>
+              <path d="M230 58 L200 140 L260 140 Z" class="lv-shadow"/>
+              <!-- mesh -->
+              <g stroke="rgba(95,181,255,.4)" stroke-width=".5" fill="none">
+                <line x1="50" y1="55" x2="95" y2="48"/>
+                <line x1="95" y1="48" x2="140" y2="60"/>
+                <line x1="140" y1="60" x2="185" y2="50"/>
+                <line x1="185" y1="50" x2="230" y2="58"/>
+                <line x1="230" y1="58" x2="270" y2="52"/>
+              </g>
+            </g>
+          </svg>
+        </div>
+        <div class="layer-specs">
+          <div class="spec"><span class="k">Altitude</span><span class="v">300 – 400 ft AGL</span></div>
+          <div class="spec"><span class="k">Per zone</span><span class="v">5 – 20 nodes</span></div>
+          <div class="spec"><span class="k">Class</span><span class="v">FPV / low-signature</span></div>
+          <div class="spec"><span class="k">Hardening</span><span class="v">Anti-jam comms</span></div>
+        </div>
+      </div>
+
+      <div class="layer reveal">
+        <div class="glow"></div>
+        <div class="layer-tag">Layer 02 / Ground</div>
+        <h3 class="layer-name">Rover Anchors</h3>
+        <div class="layer-sub">Rugged autonomous ground vehicles</div>
+        <div class="layer-visual">
+          <svg viewBox="0 0 300 170" width="100%" height="100%">
+            <path d="M0 130 Q75 110 150 125 T300 120" class="lv-line"/>
+            <path d="M0 145 Q60 135 150 140 T300 138" class="lv-line" stroke-dasharray="2 6"/>
+            <!-- rover -->
+            <g transform="translate(120 95)">
+              <rect x="0" y="10" width="60" height="18" rx="3" fill="#1c2128" stroke="#5fb5ff" stroke-width=".8"/>
+              <rect x="8" y="2" width="44" height="12" rx="2" fill="#0d1117" stroke="#5fb5ff" stroke-width=".8"/>
+              <circle cx="12" cy="32" r="5" fill="#23272e" stroke="#5fb5ff" stroke-width=".6"/>
+              <circle cx="30" cy="32" r="5" fill="#23272e" stroke="#5fb5ff" stroke-width=".6"/>
+              <circle cx="48" cy="32" r="5" fill="#23272e" stroke="#5fb5ff" stroke-width=".6"/>
+              <!-- antenna -->
+              <line x1="30" y1="2" x2="30" y2="-18" stroke="#5fb5ff" stroke-width=".8"/>
+              <circle cx="30" cy="-20" r="2" class="lv-dot"/>
+            </g>
+            <!-- signal arcs -->
+            <g stroke="rgba(95,181,255,.4)" stroke-width=".8" fill="none">
+              <path d="M150 75 Q150 50 120 30"/>
+              <path d="M150 75 Q150 50 180 30"/>
+              <path d="M150 75 Q120 45 80 35"/>
+              <path d="M150 75 Q180 45 220 35"/>
+            </g>
+            <!-- relay drones -->
+            <circle class="lv-dot" cx="80" cy="35" r="2"/>
+            <circle class="lv-dot" cx="120" cy="30" r="2"/>
+            <circle class="lv-dot" cx="180" cy="30" r="2"/>
+            <circle class="lv-dot" cx="220" cy="35" r="2"/>
+          </svg>
+        </div>
+        <div class="layer-specs">
+          <div class="spec"><span class="k">Role</span><span class="v">Charge + relay hub</span></div>
+          <div class="spec"><span class="k">Endurance</span><span class="v">Multi-week field</span></div>
+          <div class="spec"><span class="k">Sensors</span><span class="v">Backup ground EO/IR</span></div>
+          <div class="spec"><span class="k">Mobility</span><span class="v">All-terrain autonomous</span></div>
+        </div>
+      </div>
+
+      <div class="layer reveal">
+        <div class="glow"></div>
+        <div class="layer-tag">Layer 03 / Intelligence</div>
+        <h3 class="layer-name">Edge AI Mesh</h3>
+        <div class="layer-sub">On-device detection &amp; classification</div>
+        <div class="layer-visual">
+          <svg viewBox="0 0 300 170" width="100%" height="100%">
+            <!-- neural mesh -->
+            <g>
+              <g stroke="rgba(95,181,255,.2)" stroke-width=".5" fill="none">
+                <line x1="40" y1="30" x2="120" y2="60"/>
+                <line x1="40" y1="30" x2="120" y2="90"/>
+                <line x1="40" y1="30" x2="120" y2="120"/>
+                <line x1="40" y1="70" x2="120" y2="60"/>
+                <line x1="40" y1="70" x2="120" y2="90"/>
+                <line x1="40" y1="70" x2="120" y2="120"/>
+                <line x1="40" y1="110" x2="120" y2="60"/>
+                <line x1="40" y1="110" x2="120" y2="90"/>
+                <line x1="40" y1="110" x2="120" y2="120"/>
+                <line x1="40" y1="140" x2="120" y2="60"/>
+                <line x1="40" y1="140" x2="120" y2="90"/>
+                <line x1="40" y1="140" x2="120" y2="120"/>
+
+                <line x1="120" y1="60" x2="200" y2="75"/>
+                <line x1="120" y1="60" x2="200" y2="100"/>
+                <line x1="120" y1="90" x2="200" y2="75"/>
+                <line x1="120" y1="90" x2="200" y2="100"/>
+                <line x1="120" y1="120" x2="200" y2="75"/>
+                <line x1="120" y1="120" x2="200" y2="100"/>
+
+                <line x1="200" y1="75" x2="260" y2="85"/>
+                <line x1="200" y1="100" x2="260" y2="85"/>
+              </g>
+              <g fill="#0d1117" stroke="#5fb5ff" stroke-width=".8">
+                <circle cx="40" cy="30" r="3.5"/>
+                <circle cx="40" cy="70" r="3.5"/>
+                <circle cx="40" cy="110" r="3.5"/>
+                <circle cx="40" cy="140" r="3.5"/>
+                <circle cx="120" cy="60" r="3.5"/>
+                <circle cx="120" cy="90" r="3.5"/>
+                <circle cx="120" cy="120" r="3.5"/>
+                <circle cx="200" cy="75" r="3.5"/>
+                <circle cx="200" cy="100" r="3.5"/>
+                <circle cx="260" cy="85" r="5" fill="#5fb5ff"/>
+              </g>
+              <text x="40" y="160" font-family="JetBrains Mono" font-size="7" fill="#5fb5ff" opacity=".7">SENSORS</text>
+              <text x="240" y="110" font-family="JetBrains Mono" font-size="7" fill="#5fb5ff" opacity=".9">ALERT</text>
+            </g>
+          </svg>
+        </div>
+        <div class="layer-specs">
+          <div class="spec"><span class="k">Compute</span><span class="v">On-device + edge</span></div>
+          <div class="spec"><span class="k">Detects</span><span class="v">Vehicles · vessels · aircraft</span></div>
+          <div class="spec"><span class="k">Modalities</span><span class="v">EO · IR · motion</span></div>
+          <div class="spec"><span class="k">Output</span><span class="v">Classified events only</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =================== HOW IT WORKS =================== -->
+<section id="how" class="how">
+  <div class="container">
+    <div class="reveal">
+      <div class="sec-eyebrow">03 · Operation</div>
+      <h2 class="sec-title">A live <span class="italic">mesh,</span> not a checkpoint.</h2>
+      <p class="sec-lede">
+        Drag, click, and toggle the scene below to see how an ArcDrone deployment behaves in the field.
+        Knock out a node — the mesh self-heals around it.
+      </p>
+    </div>
+
+    <div class="scene-wrap reveal">
+      <div id="scene"><canvas id="sceneCanvas"></canvas></div>
+      <aside class="scene-side">
+        <h4>Controls</h4>
+        <div class="toggle-row">
+          <div class="toggle active" data-toggle="links">
+            <span>Mesh links</span><span class="dot"></span>
+          </div>
+          <div class="toggle active" data-toggle="cones">
+            <span>Sensor cones</span><span class="dot"></span>
+          </div>
+          <div class="toggle" data-toggle="intrusion">
+            <span>Inject intrusion</span><span class="dot"></span>
+          </div>
+          <div class="toggle" data-toggle="failure">
+            <span>Disable a drone</span><span class="dot"></span>
+          </div>
+        </div>
+
+        <h4 style="margin-top:18px">Telemetry</h4>
+        <div class="telemetry" id="telemetry">
+          <div><span class="live">●</span> LINK · <span class="val" id="t-link">NOMINAL</span></div>
+          <div>NODES · <span class="val" id="t-nodes">12 / 12</span></div>
+          <div>LAT · <span class="val" id="t-lat">68.42° N</span></div>
+          <div>LON · <span class="val" id="t-lon">95.18° W</span></div>
+          <div>EVENTS · <span class="val" id="t-events">0</span></div>
+        </div>
+      </aside>
+    </div>
+  </div>
+</section>
+
+<!-- =================== USE CASES =================== -->
+<section id="cases" class="cases">
+  <div class="container">
+    <div class="reveal">
+      <div class="sec-eyebrow">04 · Applications</div>
+      <h2 class="sec-title">Built for defence. <span class="italic">Useful far beyond it.</span></h2>
+    </div>
+
+    <div class="cases-grid">
+      <div class="case defense reveal">
+        <div class="case-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6l8-4z"/></svg>
+        </div>
+        <div class="case-cat">Defence · Sovereignty</div>
+        <h4 class="case-name">Unauthorized Arctic entry detection</h4>
+        <p class="case-desc">Continuous low-altitude coverage flags vehicles, vessels, and personnel crossing into sovereign zones — beneath radar, beyond satellites.</p>
+      </div>
+      <div class="case defense reveal">
+        <div class="case-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 12h20M12 2l4 6-4 4-4-4 4-6zM12 22l-4-6 4-4 4 4-4 6z"/></svg>
+        </div>
+        <div class="case-cat">Defence · Air domain</div>
+        <h4 class="case-name">Low-altitude aircraft intrusion</h4>
+        <p class="case-desc">Detects the slow, small, and quiet — the exact threat profile legacy long-range radar systems were never tuned for.</p>
+      </div>
+      <div class="case defense reveal">
+        <div class="case-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 21l9-18 9 18H3z"/><path d="M9 17h6"/></svg>
+        </div>
+        <div class="case-cat">Defence · Resources</div>
+        <h4 class="case-name">Illegal resource activity</h4>
+        <p class="case-desc">Persistent monitoring of remote mining sites and resource corridors — flags extraction, heavy equipment, and supply movement.</p>
+      </div>
+
+      <div class="case commercial reveal">
+        <div class="case-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 12h18M6 8v8M18 8v8M10 10v4M14 10v4"/></svg>
+        </div>
+        <div class="case-cat">Critical Infrastructure</div>
+        <h4 class="case-name">Pipeline &amp; corridor monitoring</h4>
+        <p class="case-desc">Cost-effective uptime watch on remote pipelines, transmission corridors, and rail — anomaly alerts before failures cascade.</p>
+      </div>
+      <div class="case commercial reveal">
+        <div class="case-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 18c2-2 4-2 6 0s4 2 6 0 4-2 6 0M2 12c2-2 4-2 6 0s4 2 6 0 4-2 6 0"/></svg>
+        </div>
+        <div class="case-cat">Maritime · Climate</div>
+        <h4 class="case-name">Ice &amp; maritime route monitoring</h4>
+        <p class="case-desc">Real-time ice movement, ship transit, and shipping lane awareness — including the rapidly opening Northwest Passage.</p>
+      </div>
+      <div class="case commercial reveal">
+        <div class="case-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+        </div>
+        <div class="case-cat">Public Safety</div>
+        <h4 class="case-name">Search &amp; rescue, extreme conditions</h4>
+        <p class="case-desc">Thermal-equipped swarms canvas terrain humans can&rsquo;t — minutes count, and a saturated swarm searches in parallel.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =================== DIFF =================== -->
+<section id="diff" class="diff">
+  <div class="container">
+    <div class="reveal">
+      <div class="sec-eyebrow">05 · Approach</div>
+      <h2 class="sec-title">We <span class="italic">build the eyes.</span> Others integrate the view.</h2>
+      <p class="sec-lede">
+        Software-first surveillance platforms aggregate feeds from many sensor providers — they need raw eyes on the ground.
+        ArcDrone is built to be exactly that: a discreet, low-cost, sensor-rich subsystem that drops into existing C4ISR stacks.
+      </p>
+    </div>
+
+    <div class="compare">
+      <div class="col them reveal">
+        <div class="col-tag">Existing players</div>
+        <h3>Software aggregators</h3>
+        <ul>
+          <li><span class="mk">×</span><span>Integrate third-party sensors; depend on partner hardware for ground-truth coverage.</span></li>
+          <li><span class="mk">×</span><span>Optimized for fusion &amp; visualization, not for cheap, persistent field deployment.</span></li>
+          <li><span class="mk">×</span><span>Coverage limited by whatever feeds the customer already pays for.</span></li>
+        </ul>
+      </div>
+      <div class="col us reveal">
+        <div class="col-tag">ArcDrone</div>
+        <h3>Hardware + edge AI</h3>
+        <ul>
+          <li><span class="mk">✓</span><span>Purpose-built drone-and-rover hardware tuned for Arctic conditions and low signature.</span></li>
+          <li><span class="mk">✓</span><span>Order-of-magnitude cheaper per square kilometre than legacy surveillance assets.</span></li>
+          <li><span class="mk">✓</span><span>Drops in as a subsystem — emits classified events that any C4ISR platform can ingest.</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =================== CTA =================== -->
+<section id="contact" class="endcta">
+  <div class="container reveal">
+    <h2>The Arctic deserves <span style="font-style:italic;font-weight:300;color:var(--accent-3)">eyes that don&rsquo;t blink.</span></h2>
+    <p>Talk to us about pilot deployments, defence partnerships, or integrating ArcDrone as a sensing layer in your existing surveillance stack.</p>
+    <a href="mailto:hello@arcdrone.ca" class="btn btn-primary">Request a brief <span class="arrow">→</span></a>
+
+    <footer>
+      <span>© ArcDrone Systems · Canada</span>
+      <span>Built for the North</span>
+      <span>v 0.1 · Concept</span>
+    </footer>
+  </div>
+</section>
+
+</div><!-- /.stage-content -->
+
+<!-- =================== SCRIPTS =================== -->
+<script>
+/* ===== Boot sequence ===== */
+document.documentElement.classList.add('booting');
+const boot = document.getElementById('boot');
+const stage = document.querySelector('.stage-content');
+const skipBoot = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function endBoot(){
+  boot.classList.add('gone');
+  stage.classList.add('lit');
+  document.documentElement.classList.remove('booting');
+  setTimeout(()=>boot.remove(), 900);
+}
+if(skipBoot){
+  endBoot();
+} else {
+  // Reveal page content right as the logo begins zooming out
+  setTimeout(()=>stage.classList.add('lit'), 1900);
+  // Remove boot overlay once the zoom-out completes
+  setTimeout(endBoot, 2750);
+  // Allow click-to-skip
+  boot.addEventListener('click', endBoot);
+}
+
+/* ===== Reveal on scroll ===== */
+const io = new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target);} });
+},{threshold:.12});
+document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+
+/* ===== Nav shrink ===== */
+const nav = document.getElementById('nav');
+window.addEventListener('scroll',()=>{
+  nav.style.padding = window.scrollY>20 ? '0' : '4px 0';
+});
+
+/* ===========================================================
+   HERO SWARM — 2D canvas, mouse-reactive flocking dots
+   =========================================================== */
+(function(){
+  const canvas = document.getElementById('swarm');
+  const ctx = canvas.getContext('2d');
+  let W,H,dpr;
+  const drones = [];
+  const N = 80;
+  const mouse = {x:-9999,y:-9999};
+
+  function resize(){
+    dpr = Math.min(window.devicePixelRatio||1, 2);
+    W = canvas.clientWidth = canvas.parentElement.clientWidth;
+    H = canvas.clientHeight = canvas.parentElement.clientHeight;
+    canvas.width = W*dpr; canvas.height = H*dpr;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  window.addEventListener('resize',resize);
+
+  function init(){
+    resize();
+    drones.length = 0;
+    for(let i=0;i<N;i++){
+      const a = Math.random()*Math.PI*2;
+      const sp = .8 + Math.random()*1.6;
+      drones.push({
+        x: Math.random()*W,
+        y: Math.random()*H,
+        vx: Math.cos(a)*sp,
+        vy: Math.sin(a)*sp,
+        size: Math.random()*1.4 + .6,
+        phase: Math.random()*Math.PI*2,
+        drift: .6 + Math.random()*1.4,
+      });
+    }
+  }
+
+  canvas.addEventListener('mousemove',(e)=>{
+    const r = canvas.getBoundingClientRect();
+    mouse.x = e.clientX - r.left;
+    mouse.y = e.clientY - r.top;
+  });
+  canvas.addEventListener('mouseleave',()=>{mouse.x=mouse.y=-9999});
+
+  function frame(t){
+    ctx.clearRect(0,0,W,H);
+
+    // gentle background glow circles
+    ctx.save();
+    const g = ctx.createRadialGradient(W*.65, H*.45, 0, W*.65, H*.45, Math.max(W,H)*.6);
+    g.addColorStop(0,'rgba(95,181,255,.05)');
+    g.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0,0,W,H);
+    ctx.restore();
+
+    // update drones
+    for(const d of drones){
+      d.x += d.vx + Math.sin(t*.0009 + d.phase)*.35*d.drift;
+      d.y += d.vy + Math.cos(t*.0011 + d.phase*1.3)*.28*d.drift;
+
+      // wrap
+      if(d.x<-20) d.x=W+20; if(d.x>W+20) d.x=-20;
+      if(d.y<-20) d.y=H+20; if(d.y>H+20) d.y=-20;
+
+      // attract toward mouse softly
+      const dx = mouse.x - d.x, dy = mouse.y - d.y;
+      const dist2 = dx*dx + dy*dy;
+      if(dist2 < 260*260){
+        const dist = Math.sqrt(dist2)+.001;
+        const f = (1 - dist/260) * .08;
+        d.vx += dx/dist * f;
+        d.vy += dy/dist * f;
+      }
+      // light friction — keeps energy in the system
+      d.vx *= .995; d.vy *= .995;
+      // random walk impulses
+      d.vx += (Math.random()-.5)*.08;
+      d.vy += (Math.random()-.5)*.08;
+      // clamp top speed so it stays elegant
+      const sp = Math.hypot(d.vx,d.vy);
+      const max = 2.6;
+      if(sp>max){ d.vx = d.vx/sp*max; d.vy = d.vy/sp*max; }
+    }
+
+    // links
+    ctx.lineWidth = .5;
+    for(let i=0;i<drones.length;i++){
+      const a = drones[i];
+      for(let j=i+1;j<drones.length;j++){
+        const b = drones[j];
+        const dx = a.x-b.x, dy = a.y-b.y;
+        const d2 = dx*dx + dy*dy;
+        if(d2 < 130*130){
+          const o = 1 - d2/(130*130);
+          ctx.strokeStyle = `rgba(95,181,255,${o*0.35})`;
+          ctx.beginPath();
+          ctx.moveTo(a.x,a.y);
+          ctx.lineTo(b.x,b.y);
+          ctx.stroke();
+        }
+      }
+    }
+
+    // dots
+    for(const d of drones){
+      ctx.beginPath();
+      ctx.fillStyle = '#cfe8ff';
+      ctx.arc(d.x,d.y,d.size,0,Math.PI*2);
+      ctx.fill();
+      // halo
+      ctx.beginPath();
+      ctx.fillStyle = 'rgba(95,181,255,.15)';
+      ctx.arc(d.x,d.y,d.size*3.5,0,Math.PI*2);
+      ctx.fill();
+    }
+
+    requestAnimationFrame(frame);
+  }
+
+  init();
+  requestAnimationFrame(frame);
+})();
+
+/* ===========================================================
+   SCENE — Interactive deployment (canvas 2D, isometric-ish)
+   =========================================================== */
+(function(){
+  const canvas = document.getElementById('sceneCanvas');
+  const ctx = canvas.getContext('2d');
+  let W,H,dpr;
+  const state = {
+    links:true, cones:true, intrusion:false, failure:false,
+    events:0, downed: -1,
+  };
+  const drones = [];
+  const NUM = 12;
+  const rover = {x:0,y:0};
+  let intruder = null;
+  let drag = {on:false,x:0,y:0,dx:0,dy:0,offset:{x:0,y:0}};
+
+  function resize(){
+    dpr = Math.min(window.devicePixelRatio||1, 2);
+    W = canvas.clientWidth = canvas.parentElement.clientWidth;
+    H = canvas.clientHeight = canvas.parentElement.clientHeight;
+    canvas.width = W*dpr; canvas.height = H*dpr;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  window.addEventListener('resize',()=>{resize(); layout()});
+
+  function layout(){
+    rover.x = W/2; rover.y = H*.78;
+    drones.length = 0;
+    for(let i=0;i<NUM;i++){
+      const angle = (i/NUM)*Math.PI*2;
+      const r = Math.min(W,H)*0.32;
+      drones.push({
+        bx: rover.x + Math.cos(angle)*r,
+        by: rover.y + Math.sin(angle)*r*.55 - 70,
+        x: 0, y: 0, ph: Math.random()*Math.PI*2,
+        id: i, alive: true,
+      });
+    }
+  }
+
+  // dragging the rover (and its whole field)
+  canvas.addEventListener('mousedown',(e)=>{
+    const r = canvas.getBoundingClientRect();
+    const mx = e.clientX-r.left, my = e.clientY-r.top;
+    if(Math.hypot(mx-rover.x,my-rover.y)<40){
+      drag.on=true; drag.x=mx; drag.y=my;
+    }
+  });
+  window.addEventListener('mouseup',()=>{drag.on=false});
+  canvas.addEventListener('mousemove',(e)=>{
+    if(!drag.on) return;
+    const r = canvas.getBoundingClientRect();
+    const mx = e.clientX-r.left, my = e.clientY-r.top;
+    const ddx = mx-drag.x, ddy = my-drag.y;
+    drag.x=mx; drag.y=my;
+    rover.x += ddx; rover.y += ddy;
+    for(const d of drones){d.bx += ddx; d.by += ddy}
+  });
+
+  // touch
+  canvas.addEventListener('touchstart',(e)=>{
+    const t = e.touches[0]; const r = canvas.getBoundingClientRect();
+    const mx=t.clientX-r.left, my=t.clientY-r.top;
+    if(Math.hypot(mx-rover.x,my-rover.y)<60){drag.on=true; drag.x=mx; drag.y=my; e.preventDefault();}
+  },{passive:false});
+  canvas.addEventListener('touchmove',(e)=>{
+    if(!drag.on) return;
+    const t = e.touches[0]; const r = canvas.getBoundingClientRect();
+    const mx=t.clientX-r.left, my=t.clientY-r.top;
+    const ddx=mx-drag.x, ddy=my-drag.y; drag.x=mx; drag.y=my;
+    rover.x+=ddx; rover.y+=ddy;
+    for(const d of drones){d.bx+=ddx; d.by+=ddy}
+    e.preventDefault();
+  },{passive:false});
+  canvas.addEventListener('touchend',()=>{drag.on=false});
+
+  // toggles
+  document.querySelectorAll('.toggle').forEach(t=>{
+    t.addEventListener('click',()=>{
+      const key = t.dataset.toggle;
+      if(key==='intrusion'){
+        state.intrusion = !state.intrusion;
+        t.classList.toggle('active', state.intrusion);
+        if(state.intrusion){
+          intruder = { x: 40, y: H*.4, vx: .6, vy: .15, detected:false };
+        } else { intruder = null; }
+      } else if(key==='failure'){
+        state.failure = !state.failure;
+        t.classList.toggle('active', state.failure);
+        if(state.failure){
+          // pick a random alive drone
+          const alive = drones.filter(d=>d.alive);
+          if(alive.length){
+            const pick = alive[Math.floor(Math.random()*alive.length)];
+            pick.alive = false; state.downed = pick.id;
+          }
+        } else {
+          drones.forEach(d=>d.alive=true); state.downed=-1;
+        }
+        updateTelemetry();
+      } else {
+        state[key] = !state[key];
+        t.classList.toggle('active', state[key]);
+      }
+    });
+  });
+
+  function updateTelemetry(){
+    const alive = drones.filter(d=>d.alive).length;
+    document.getElementById('t-nodes').textContent = `${alive} / ${NUM}`;
+    document.getElementById('t-link').textContent = (alive<NUM) ? 'REROUTED' : 'NOMINAL';
+    document.getElementById('t-link').style.color = (alive<NUM) ? '#ff6b6b' : '#fff';
+    document.getElementById('t-events').textContent = state.events;
+  }
+
+  function frame(t){
+    ctx.clearRect(0,0,W,H);
+
+    // tundra plane
+    const grad = ctx.createLinearGradient(0,H*.4,0,H);
+    grad.addColorStop(0,'rgba(20,40,60,0)');
+    grad.addColorStop(1,'rgba(40,80,120,.12)');
+    ctx.fillStyle=grad;
+    ctx.fillRect(0,H*.5,W,H*.5);
+
+    // grid
+    ctx.strokeStyle='rgba(255,255,255,.04)';
+    ctx.lineWidth=1;
+    for(let y=H*.55;y<H;y+=24){
+      ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();
+    }
+    for(let x=0;x<W;x+=40){
+      ctx.beginPath();
+      ctx.moveTo(x,H*.55);
+      const skew = (x-W/2)*.05;
+      ctx.lineTo(W/2 + (x-W/2)*1.4, H);
+      ctx.stroke();
+    }
+
+    // update drones
+    for(const d of drones){
+      d.x = d.bx + Math.sin(t*.0008 + d.ph)*6;
+      d.y = d.by + Math.cos(t*.0009 + d.ph)*4;
+    }
+
+    // sensor cones
+    if(state.cones){
+      for(const d of drones){
+        if(!d.alive) continue;
+        ctx.beginPath();
+        ctx.moveTo(d.x,d.y);
+        ctx.lineTo(d.x-32, d.y+90);
+        ctx.lineTo(d.x+32, d.y+90);
+        ctx.closePath();
+        const g = ctx.createLinearGradient(d.x,d.y,d.x,d.y+90);
+        g.addColorStop(0,'rgba(95,181,255,.18)');
+        g.addColorStop(1,'rgba(95,181,255,0)');
+        ctx.fillStyle=g;
+        ctx.fill();
+      }
+    }
+
+    // links: connect each alive drone to rover + its alive neighbors
+    if(state.links){
+      const alive = drones.filter(d=>d.alive);
+      ctx.lineWidth = .6;
+      for(const d of alive){
+        ctx.strokeStyle='rgba(95,181,255,.25)';
+        ctx.beginPath();
+        ctx.moveTo(d.x,d.y);
+        ctx.lineTo(rover.x, rover.y-8);
+        ctx.stroke();
+      }
+      // neighbor mesh
+      for(let i=0;i<alive.length;i++){
+        const a = alive[i];
+        const b = alive[(i+1)%alive.length];
+        ctx.strokeStyle='rgba(95,181,255,.15)';
+        ctx.beginPath();
+        ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);
+        ctx.stroke();
+      }
+    }
+
+    // intruder
+    if(intruder){
+      intruder.x += intruder.vx;
+      intruder.y += intruder.vy * Math.sin(t*.002);
+      // detection by nearest alive drone
+      let nearest=null,nd=1e9;
+      for(const d of drones){
+        if(!d.alive) continue;
+        const dist = Math.hypot(d.x-intruder.x,d.y-intruder.y);
+        if(dist<nd){nd=dist; nearest=d}
+      }
+      if(nearest && nd<120 && !intruder.detected){
+        intruder.detected = true;
+        state.events += 1;
+        updateTelemetry();
+      }
+      // draw
+      ctx.save();
+      ctx.translate(intruder.x,intruder.y);
+      ctx.fillStyle = intruder.detected ? '#ff6b6b' : '#ffb86b';
+      ctx.beginPath();
+      ctx.moveTo(0,-6);ctx.lineTo(8,6);ctx.lineTo(-8,6);ctx.closePath();
+      ctx.fill();
+      if(intruder.detected){
+        ctx.strokeStyle='rgba(255,107,107,.6)';
+        ctx.beginPath();
+        ctx.arc(0,0,18+Math.sin(t*.01)*6,0,Math.PI*2);
+        ctx.stroke();
+        // alert line to nearest
+        if(nearest){
+          ctx.strokeStyle='rgba(255,107,107,.5)';
+          ctx.setLineDash([3,4]);
+          ctx.beginPath();
+          ctx.moveTo(0,0);
+          ctx.lineTo(nearest.x-intruder.x, nearest.y-intruder.y);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+      }
+      ctx.restore();
+
+      if(intruder.x>W+30) intruder=null, state.intrusion=false,
+        document.querySelector('[data-toggle="intrusion"]').classList.remove('active');
+    }
+
+    // drones
+    for(const d of drones){
+      ctx.save();
+      ctx.translate(d.x,d.y);
+      if(d.alive){
+        // body
+        ctx.fillStyle='#e6edf5';
+        ctx.beginPath();ctx.arc(0,0,3.2,0,Math.PI*2);ctx.fill();
+        // glow
+        ctx.fillStyle='rgba(95,181,255,.35)';
+        ctx.beginPath();ctx.arc(0,0,8+Math.sin(t*.003+d.ph)*1.5,0,Math.PI*2);ctx.fill();
+        // arms
+        ctx.strokeStyle='rgba(230,237,245,.45)';
+        ctx.lineWidth=.8;
+        for(let i=0;i<4;i++){
+          const a = i*Math.PI/2 + t*.0005;
+          ctx.beginPath();
+          ctx.moveTo(0,0);
+          ctx.lineTo(Math.cos(a)*5,Math.sin(a)*5);
+          ctx.stroke();
+        }
+      } else {
+        // downed
+        ctx.fillStyle='rgba(255,107,107,.8)';
+        ctx.beginPath();ctx.arc(0,0,3.2,0,Math.PI*2);ctx.fill();
+        ctx.strokeStyle='rgba(255,107,107,.4)';
+        ctx.beginPath();ctx.moveTo(-6,-6);ctx.lineTo(6,6);
+        ctx.moveTo(6,-6);ctx.lineTo(-6,6);ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    // rover
+    ctx.save();
+    ctx.translate(rover.x, rover.y);
+    // shadow
+    ctx.fillStyle='rgba(0,0,0,.5)';
+    ctx.beginPath();ctx.ellipse(0,18,32,6,0,0,Math.PI*2);ctx.fill();
+    // body
+    ctx.fillStyle='#1c2128';
+    ctx.strokeStyle='#5fb5ff';
+    ctx.lineWidth=1;
+    ctx.beginPath();ctx.roundRect(-26,-8,52,18,3);ctx.fill();ctx.stroke();
+    ctx.fillStyle='#0d1117';
+    ctx.beginPath();ctx.roundRect(-18,-16,36,10,2);ctx.fill();ctx.stroke();
+    // wheels
+    ctx.fillStyle='#23272e';
+    for(const wx of [-18,0,18]){
+      ctx.beginPath();ctx.arc(wx,12,4.5,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle='rgba(95,181,255,.4)';ctx.stroke();
+    }
+    // antenna
+    ctx.strokeStyle='#5fb5ff';
+    ctx.beginPath();ctx.moveTo(0,-16);ctx.lineTo(0,-32);ctx.stroke();
+    // antenna pulse
+    ctx.fillStyle='#5fb5ff';
+    ctx.beginPath();ctx.arc(0,-34,2+Math.sin(t*.006)*.6,0,Math.PI*2);ctx.fill();
+    // signal arcs
+    for(let i=1;i<=3;i++){
+      const p = ((t*.0015 + i*.33) % 1);
+      ctx.strokeStyle = `rgba(95,181,255,${.45*(1-p)})`;
+      ctx.beginPath();
+      ctx.arc(0,-34,p*40,-Math.PI*.8,-Math.PI*.2);
+      ctx.stroke();
+    }
+    // label
+    ctx.fillStyle='rgba(143,160,176,.7)';
+    ctx.font='9px JetBrains Mono, monospace';
+    ctx.textAlign='center';
+    ctx.fillText('DRAG ROVER',0,32);
+    ctx.restore();
+
+    requestAnimationFrame(frame);
+  }
+
+  // roundRect polyfill
+  if(!CanvasRenderingContext2D.prototype.roundRect){
+    CanvasRenderingContext2D.prototype.roundRect = function(x,y,w,h,r){
+      this.beginPath();
+      this.moveTo(x+r,y);
+      this.arcTo(x+w,y,x+w,y+h,r);
+      this.arcTo(x+w,y+h,x,y+h,r);
+      this.arcTo(x,y+h,x,y,r);
+      this.arcTo(x,y,x+w,y,r);
+      this.closePath();
+      return this;
+    };
+  }
+
+  resize(); layout();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
