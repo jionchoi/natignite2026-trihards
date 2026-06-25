@@ -9,8 +9,14 @@ import { FilePreview } from "./FilePreview";
 import { ContextForm, type ContextValue } from "./ContextForm";
 import { fileToDataUrl, generateId } from "@/lib/image";
 import { useSession } from "@/lib/store";
+import { CATEGORIES } from "@/lib/categories";
 
-const initialContext: ContextValue = { spaceType: "cafe", notes: "" };
+const initialContext: ContextValue = {
+  spaceType: "cafe",
+  notes: "",
+  focusCategories: [...CATEGORIES],
+  otherFocus: "",
+};
 
 export function UploadFlow() {
   const router = useRouter();

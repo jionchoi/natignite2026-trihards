@@ -53,10 +53,10 @@ export function AnalyzeView() {
     const run = async () => {
       try {
         session.setStage("depth");
-        const { estimateDepth } = await import("@/lib/depth");
+        const { getDepthDataUrl } = await import("@/lib/depthClient");
 
-        const [depthResult, analysis] = await Promise.all([
-          estimateDepth(session.imageDataUrl!),
+        const [depthDataUrl, analysis] = await Promise.all([
+          getDepthDataUrl(session.imageDataUrl!),
           (async () => {
             const res = await fetch("/api/analyze", {
               method: "POST",
@@ -65,6 +65,8 @@ export function AnalyzeView() {
                 imageDataUrl: session.imageDataUrl,
                 spaceType: session.context.spaceType,
                 notes: session.context.notes,
+                focusCategories: session.context.focusCategories,
+                otherFocus: session.context.otherFocus,
               }),
             });
             if (!res.ok) {
@@ -78,7 +80,7 @@ export function AnalyzeView() {
           })(),
         ]);
 
-        session.setDepth(depthResult.dataUrl);
+        session.setDepth(depthDataUrl);
         session.setAnalysis(analysis);
         session.setStage("done");
       } catch (err) {

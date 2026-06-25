@@ -10,8 +10,14 @@ import { ContextForm, type ContextValue } from "@/components/upload/ContextForm"
 import { ImportExportButton } from "@/components/io";
 import { fileToDataUrl, generateId } from "@/lib/image";
 import { useSession } from "@/lib/store";
+import { CATEGORIES } from "@/lib/categories";
 
-const initialContext: ContextValue = { spaceType: "cafe", notes: "" };
+const initialContext: ContextValue = {
+  spaceType: "cafe",
+  notes: "",
+  focusCategories: [...CATEGORIES],
+  otherFocus: "",
+};
 
 export default function StartPage() {
   const router = useRouter();

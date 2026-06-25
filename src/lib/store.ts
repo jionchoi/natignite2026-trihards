@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import type { Analysis } from "./schemas";
 import type { ContextValue } from "@/components/upload/ContextForm";
+import { CATEGORIES } from "./categories";
 
 export type StageId = "upload" | "depth" | "analyze" | "done";
 export type ImportSource = "none" | "file";
@@ -56,7 +57,12 @@ interface SessionState {
   reset: () => void;
 }
 
-const initialContext: ContextValue = { spaceType: "cafe", notes: "" };
+const initialContext: ContextValue = {
+  spaceType: "cafe",
+  notes: "",
+  focusCategories: [...CATEGORIES],
+  otherFocus: "",
+};
 
 export const useSession = create<SessionState>((set, get) => ({
   id: null,

@@ -96,13 +96,58 @@ Counts in summary MUST match the issues array.`;
 export interface AccessibilityPromptInput {
   spaceType: string;
   notes?: string;
+  /**
+   * Categories the user asked us to focus on. When omitted, empty, or all six
+   * are present, we review everything as usual.
+   */
+  focusCategories?: string[];
+  /** Free-text custom issue the user specifically wants us to look for. */
+  otherFocus?: string;
 }
 
-export function buildUserPrompt({ spaceType, notes }: AccessibilityPromptInput) {
+const ALL_CATEGORIES = [
+  "mobility",
+  "sensory",
+  "wayfinding",
+  "lighting",
+  "signage",
+  "communication",
+];
+
+export function buildUserPrompt({
+  spaceType,
+  notes,
+  focusCategories,
+  otherFocus,
+}: AccessibilityPromptInput) {
   const parts = [`Space type: ${spaceType}.`];
   if (notes && notes.trim()) {
     parts.push(`Owner notes: ${notes.trim()}`);
   }
+
+  const focus = (focusCategories ?? []).filter((c) =>
+    ALL_CATEGORIES.includes(c),
+  );
+  const narrowed = focus.length > 0 && focus.length < ALL_CATEGORIES.length;
+  if (narrowed) {
+    parts.push(
+      `FOCUS: The user only wants issues in these categories: ${focus.join(", ")}. ` +
+        `Only return issues whose "category" is one of those. ` +
+        `Still keep the summary counts consistent with the issues you return, ` +
+        `and you may omit categories the user did not select.`,
+    );
+  }
+
+  if (otherFocus && otherFocus.trim()) {
+    parts.push(
+      `SPECIFIC CONCERN: The user specifically asked you to check for this — ` +
+        `"${otherFocus.trim()}". Prioritize inspecting the photo for it and, if ` +
+        `it is visible, include a dedicated issue for it (assign the closest ` +
+        `matching category from the allowed list). If it is not visible in the ` +
+        `photo, note that in the overview rather than inventing details.`,
+    );
+  }
+
   parts.push("Review the photo and return the JSON.");
   return parts.join("\n");
 }

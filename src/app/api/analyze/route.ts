@@ -16,6 +16,8 @@ const RequestSchema = z.object({
   imageDataUrl: z.string().startsWith("data:"),
   spaceType: z.string().min(1),
   notes: z.string().optional().default(""),
+  focusCategories: z.array(z.string()).optional().default([]),
+  otherFocus: z.string().optional().default(""),
 });
 
 export async function POST(req: Request) {
@@ -37,7 +39,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const { imageDataUrl, spaceType, notes } = body;
+  const { imageDataUrl, spaceType, notes, focusCategories, otherFocus } = body;
   const { base64, mimeType } = dataUrlToBase64(imageDataUrl);
 
   const genAI = new GoogleGenerativeAI(apiKey);
@@ -54,7 +56,7 @@ export async function POST(req: Request) {
   let rawText = "";
   try {
     const result = await model.generateContent([
-      { text: buildUserPrompt({ spaceType, notes }) },
+      { text: buildUserPrompt({ spaceType, notes, focusCategories, otherFocus }) },
       { inlineData: { data: base64, mimeType } },
     ]);
     rawText = result.response.text();
